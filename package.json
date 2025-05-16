@@ -1,0 +1,51 @@
+{
+  "name": "cedit",
+  "version": "0.1.0",
+  "description": "A CLI utility that leverages Anthropic **Claude 3 Sonnet v3.7** and its native `text_editor_20250124` tool to view, edit, insert, replace and create files directly from your terminal.",
+  "type": "module",
+  "main": "src/index.ts",
+  "bin": {
+    "cedit": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "NODE_OPTIONS=--no-deprecation tsx src/ui/cli/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "lint": "eslint --fix .",
+    "depcheck": "depcruise src --config dependency-cruiser.cjs --output-type err",
+    "typecheck": "tsc --noEmit",
+    "pkg-lint": "npmPkgJsonLint ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.50.3",
+    "@anthropic-ai/tokenizer": "0.0.4",
+    "@clack/prompts": "0.10.1",
+    "chalk": "5.4.1",
+    "commander": "13.1.0",
+    "p-retry": "6.2.1",
+    "pino": "9.6.0",
+    "yaml": "2.7.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "@eslint/js": "9.26.0",
+    "@types/mock-fs": "4.13.4",
+    "@types/node": "22.15.17",
+    "@typescript-eslint/eslint-plugin": "8.32.0",
+    "@typescript-eslint/parser": "8.32.0",
+    "dependency-cruiser": "16.10.2",
+    "eslint": "9.26.0",
+    "execa": "9.5.3",
+    "mock-fs": "5.5.0",
+    "nock": "14.0.4",
+    "npm-package-json-lint": "8.0.0",
+    "npm-package-json-lint-config-default": "7.0.1",
+    "pino-pretty": "13.0.0",
+    "tsx": "4.19.4",
+    "typescript": "5.8.3",
+    "vitest": "3.1.3"
+  }
+}
