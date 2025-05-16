@@ -8,7 +8,7 @@
     "cedit": "./dist/index.js"
   },
   "scripts": {
-    "dev": "NODE_OPTIONS=--no-deprecation tsx src/ui/cli/index.ts",
+    "dev": "NODE_OPTIONS=--no-deprecation tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "lint": "eslint --fix .",
