@@ -2,7 +2,7 @@
  * Definitions for CLI configuration metadata.
  */
 import type { CliConfig, LogConfig, BackupConfig, DefaultConfig } from '../../../app/model/index.js'; // Adjusted path
-import type { CliFlags } from '../main.js'; // Adjusted path
+import type { CliFlags } from '../types.js';
 import {
   parseYamlString,
   parseAndResolvePath,

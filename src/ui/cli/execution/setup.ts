@@ -6,7 +6,7 @@ import type { CliConfig } from '../../../app/model/index.js'; // Adjusted path
 import { parseArguments } from './parser.js'; // Adjusted path and function name
 import { loadConfiguration } from '../config/loader.js'; // Adjusted path
 import { getVersion } from '../services/version-manager.js'; // Adjusted path and function name
-import type { CliFlags } from '../main.js'; // Adjusted path
+import type { CliFlags } from '../types.js';
 import type { Logger } from 'pino';
 
 /**

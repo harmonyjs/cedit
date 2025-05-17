@@ -13,7 +13,7 @@ import mock from 'mock-fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { runCli } from '../src/ui/cli/main.js'; // Updated import path
+import { runCli } from '../src/ui/cli/index.js';
 import { loadConfigFile } from '../src/ui/cli/config/loader.js'; // Updated import path
 
 // Mock @clack/prompts functions to prevent console output during tests

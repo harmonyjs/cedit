@@ -35,7 +35,7 @@
  */
 
 // import { describe, it, expect, vi, beforeEach, type Mock } from \'vitest\';
-// import { runCli, type RunFn } from \'../src/ui/cli/main.js\';
+// import { runCli, type RunFn } from \'../src/ui/cli/index.js\';
 // import { parseCliArgs as originalParseCliArgs, type ParsedCliArgs } from \'../src/ui/cli/execution/parser.js\';
 // import { loadConfig as originalLoadConfig, type ResolvedConfig, type ConfigError } from \'../src/ui/cli/config/loader.js\';
 // import { initializeResourceManager as originalInitializeResourceManager, type ResourceManager } from \'../src/ui/cli/services/resource-manager.js\';
@@ -385,7 +385,7 @@
 // });
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
-import { runCli } from '../src/ui/cli/main.js';
+import { runCli } from '../src/ui/cli/index.js';
 import { orchestrateExecution } from '../src/ui/cli/execution/flow.js';
 import type { CliConfig } from '../src/app/model/index.js';
 import type { Logger } from 'pino';

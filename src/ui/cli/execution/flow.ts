@@ -9,7 +9,7 @@ import { startProcessing } from './lifecycle.js'; // Adjusted path
 import { performInitialSetup } from './setup.js'; // Adjusted path
 import type { Logger } from 'pino';
 import { ResourceManager } from '../services/resource-manager.js'; // Adjusted path
-import type { CliFlags } from '../main.js'; // Adjusted path
+import type { CliFlags } from '../types.js';
 import { ProgressMonitor } from '../services/progress-monitor.js'; // Adjusted path
 import { CompletionHandler } from '../handlers/completion-handler.js'; // Adjusted path
 
