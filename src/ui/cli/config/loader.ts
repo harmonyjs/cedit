@@ -8,7 +8,7 @@ import yaml from 'yaml';
 import chalk from 'chalk';
 import * as fs from 'node:fs/promises';
 import type { CliConfig } from '../../../app/model/index.js'; // Adjusted path
-import type { CliFlags } from '../main.js'; // Adjusted path
+import type { CliFlags } from '../types.js';
 import { type ZodIssue, type ZodError } from 'zod'; // Added ZodError for type safety
 import {
   PartialCliConfigFromFileSchema,

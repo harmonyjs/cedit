@@ -2,7 +2,7 @@
  * CLI argument parsing utilities
  */
 import { Command } from 'commander';
-import type { CliFlags, CommanderOptionValues } from '../main.js'; // Adjusted path
+import type { CliFlags, CommanderOptionValues } from '../types.js';
 import chalk from 'chalk';
 import { getVersion } from '../services/version-manager.js'; // Adjusted path and function name
 

@@ -4,7 +4,7 @@
 import chalk from 'chalk';
 import type { Logger } from 'pino';
 import { bus, BusEventType } from '../../../app/bus/index.js'; // Adjusted path
-import type { CliFlags } from '../main.js'; // Adjusted path, assuming CliFlags will be in main.ts
+import type { CliFlags } from '../types.js';
 
 /**
  * Waits for the TUI to send an INIT_COMPLETE event indicating user confirmation or cancellation.

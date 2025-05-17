@@ -3,43 +3,10 @@
  */
 import chalk from 'chalk';
 import type { CliConfig } from '../../app/model/index.js';
-import { orchestrateExecution } from './execution/flow.js'; // Adjusted path
+import { orchestrateExecution } from './execution/flow.js';
 import type { Logger } from 'pino';
-import type { ResourceManager } from './services/resource-manager.js'; // Adjusted path and type name
+import type { ResourceManager } from './services/resource-manager.js';
 
-/**
- * Interface representing raw CLI flags parsed from command line.
- * This is used by multiple modules, so it remains here as a central definition.
- */
-export interface CliFlags { 
-  spec: string;
-  dry_run: boolean | undefined;
-  var: string[];
-  log_level: string | undefined; 
-  log_dir?: string;
-  backup_dir?: string;
-  max_tokens?: number;
-  model?: string;
-  retries?: number;
-  sleep_ms?: number;
-  yes: boolean;
-}
-
-/**
- * Interface for options returned by Commander.js program.opts().
- */
-export interface CommanderOptionValues {
-  dryRun?: boolean;
-  var?: string[];
-  logLevel?: string;
-  logDir?: string;
-  backupDir?: string;
-  maxTokens?: number;
-  model?: string;
-  retries?: number;
-  sleepMs?: number;
-  yes?: boolean;
-}
 
 /**
  * Handles critical errors that occur during CLI execution.
@@ -97,3 +64,5 @@ export async function runCli(
     }
   }
 }
+
+export type { CliFlags, CommanderOptionValues } from './types.js';
