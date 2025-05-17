@@ -31,6 +31,7 @@ export default defineConfig([
             ...js.configs.recommended.rules,
             "no-unused-vars": "off", // Disable the base rule
             "no-console": "off",
+            "max-depth": ["error", 4], // Added max-depth rule
         },
     },
     {
@@ -46,6 +47,7 @@ export default defineConfig([
         },
         rules: {
             "no-console": "off",
+            "max-depth": ["error", 4], // Added max-depth rule
         },
     },
     {
@@ -68,6 +70,7 @@ export default defineConfig([
             ...typescriptEslint.configs["eslint-recommended"].rules,
             ...typescriptEslint.configs["recommended-type-checked"].rules,
             "complexity": ["error", 10], // Added complexity rule
+            "max-depth": ["error", 4], // Added max-depth rule
             // Then enable TypeScript-specific version with custom configuration
             "@typescript-eslint/no-unused-vars": ["error", {
                 vars: "all",                     // Check all variables
