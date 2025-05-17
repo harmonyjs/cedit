@@ -26,20 +26,21 @@ export async function initializeState( // Renamed function
 
 /**
  * Starts the main application processing function (runFn).
- * Handles errors from runFn and emits a FINISH_ABORT event if necessary.
- * @param spec - The specification file path.
- * @param cliCfg - The CLI configuration.
- * @param runFn - The main function to execute the application's core logic.
- * @param eventBus - The application's event bus.
- * @param log - The logger instance.
+ * Accepts a single object parameter to comply with max-params lint rule.
  */
-export function startProcessing( // Renamed function
-  spec: string,
-  cliCfg: CliConfig,
-  runFn: (spec: string, cfg: CliConfig) => Promise<void>,
-  eventBus: typeof bus,
-  log: Logger,
-): void {
+export function startProcessing({
+  spec,
+  cliCfg,
+  runFn,
+  eventBus,
+  log,
+}: {
+  spec: string;
+  cliCfg: CliConfig;
+  runFn: (spec: string, cfg: CliConfig) => Promise<void>;
+  eventBus: typeof bus;
+  log: Logger;
+}): void {
   runFn(spec, cliCfg).catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;

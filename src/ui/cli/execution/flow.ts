@@ -57,14 +57,21 @@ function _initializeServicesAndEmitConfig(
 /**
  * Executes the main CLI processing logic after initial setup and resource initialization.
  */
-async function executeMainProcess(
-  flags: CliFlags,
-  cliCfg: CliConfig,
-  log: Logger,
-  runFn: (spec: string, cfg: CliConfig) => Promise<void>,
-  progressMonitor: ProgressMonitor,
-  completionHandler: CompletionHandler,
-): Promise<{ exitCode: number }> {
+async function executeMainProcess({
+  flags,
+  cliCfg,
+  log,
+  runFn,
+  progressMonitor,
+  completionHandler,
+}: {
+  flags: CliFlags;
+  cliCfg: CliConfig;
+  log: Logger;
+  runFn: (spec: string, cfg: CliConfig) => Promise<void>;
+  progressMonitor: ProgressMonitor;
+  completionHandler: CompletionHandler;
+}): Promise<{ exitCode: number }> {
   const confirmed = await _handleUserConfirmation(flags, log);
   if (!confirmed) {
     progressMonitor.stop();
@@ -74,7 +81,13 @@ async function executeMainProcess(
 
   _initializeAndStartProgressTracking(progressMonitor, flags.spec);
   
-  startProcessing(flags.spec, cliCfg, runFn, bus, log); // Adjusted function name
+  startProcessing({
+    spec: flags.spec,
+    cliCfg,
+    runFn,
+    eventBus: bus,
+    log,
+  });
 
   const exitCode = await completionHandler.awaitCompletion();
   progressMonitor.stop();
@@ -99,14 +112,14 @@ export async function orchestrateExecution( // Renamed function
     _initializeServicesAndEmitConfig(log, cliCfg);
 
   // 3. Main Process Execution
-  const { exitCode } = await executeMainProcess(
+  const { exitCode } = await executeMainProcess({
     flags,
     cliCfg,
     log,
     runFn,
     progressMonitor,
     completionHandler,
-  );
+  });
 
   return { exitCode, log, resourceManager };
 }

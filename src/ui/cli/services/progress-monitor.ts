@@ -3,7 +3,7 @@
  */
 import chalk from 'chalk';
 import type { Logger } from 'pino';
-import { bus, BusEventType, BusNamespace, type BusEventPayload } from '../../../app/bus/index.js'; // Adjusted path
+import { bus, BusEventType, BusNamespace } from '../../../app/bus/index.js'; // Adjusted path
 
 /**
  * Interface for progress information.
@@ -21,7 +21,7 @@ export class ProgressMonitor { // Renamed class
   private fileViewedCount = 0;
   private fileEditedCount = 0;
   private errorCount = 0;
-  private domainEventListener?: (eventType: string, payload: BusEventPayload) => void;
+  private domainEventListener?: (eventType: string) => void;
   private isMonitoring = false;
 
   constructor(busInstance: typeof bus, log: Logger) {
@@ -44,7 +44,7 @@ export class ProgressMonitor { // Renamed class
     this.fileEditedCount = 0;
     this.errorCount = 0;
 
-    this.domainEventListener = (eventType: string, _payload: BusEventPayload) => {
+    this.domainEventListener = (eventType: string) => {
       if (eventType === BusEventType.DOMAIN_FILE_VIEWED) {
         this.fileViewedCount++;
       } else if (eventType === BusEventType.DOMAIN_FILE_EDITED) {

@@ -32,6 +32,7 @@ export default defineConfig([
             "no-unused-vars": "off", // Disable the base rule
             "no-console": "off",
             "max-depth": ["error", 4], // Added max-depth rule
+            "max-params": ["error", 4],
         },
     },
     {
@@ -48,6 +49,7 @@ export default defineConfig([
         rules: {
             "no-console": "off",
             "max-depth": ["error", 4], // Added max-depth rule
+            "max-params": ["error", 4],
         },
     },
     {
@@ -71,13 +73,12 @@ export default defineConfig([
             ...typescriptEslint.configs["recommended-type-checked"].rules,
             "complexity": ["error", 10], // Added complexity rule
             "max-depth": ["error", 4], // Added max-depth rule
+            "max-params": ["error", 4],
             // Then enable TypeScript-specific version with custom configuration
             "@typescript-eslint/no-unused-vars": ["error", {
                 vars: "all",                     // Check all variables
                 args: "after-used",              // Consider params used if any params to their right are used
                 ignoreRestSiblings: true,        // Ignore rest pattern variables like `const { a, ...rest } = obj`
-                varsIgnorePattern: "^_",         // Skip vars starting with _ or type-like uppercase names
-                argsIgnorePattern: "^_",         // Skip any parameters starting with underscore
                 caughtErrorsIgnorePattern: "^_", // Skip any caught errors starting with underscore
             }],
         },
