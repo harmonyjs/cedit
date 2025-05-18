@@ -1,7 +1,7 @@
 /**
  * CLI argument parsing utilities
  */
-import { Command } from 'commander';
+import type { Command } from 'commander';
 import type { CliFlags, CommanderOptionValues } from '../types.js';
 import chalk from 'chalk';
 import { setupCommander } from './commander-setup.js';

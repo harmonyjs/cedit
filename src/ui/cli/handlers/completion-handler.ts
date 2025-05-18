@@ -3,11 +3,12 @@
  */
 import chalk from 'chalk';
 import type { Logger } from 'pino';
-import { bus, BusEventType, type FinishSummaryEvent, type FinishAbortEvent } from '../../../app/bus/index.js'; // Adjusted path
+import type { bus} from '../../../app/bus/index.js';
+import { BusEventType, type FinishSummaryEvent, type FinishAbortEvent } from '../../../app/bus/index.js'; // Adjusted path
 
 export class CompletionHandler { // Renamed class
-  private log: Logger;
-  private busInstance: typeof bus;
+  private readonly log: Logger;
+  private readonly busInstance: typeof bus;
   private summaryHandler?: (payload: FinishSummaryEvent) => void;
   private abortHandler?: (payload: FinishAbortEvent) => void;
   private isListening = false;

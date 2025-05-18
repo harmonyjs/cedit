@@ -1,8 +1,9 @@
 import type { DomainEvent } from '../../../app/model/index.js';
 import { log, note, outro, cancel } from '@clack/prompts';
 import chalk from 'chalk';
-import {
-  bus as BusInstance, // Use an alias for the instance if needed, or use its type
+import type {
+  bus as BusInstance} from '../../../app/bus/index.js';
+import { // Use an alias for the instance if needed, or use its type
   BusEventType,
   BusNamespace,
   type FinishAbortEvent as FinishAbortedPayload, // Alias to match usage

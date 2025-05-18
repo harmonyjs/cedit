@@ -25,9 +25,9 @@ const tokenizer = getTokenizer();
  * LLM class that wraps the Anthropic Claude SDK
  */
 export class LLM {
-  private client: Anthropic;
-  private cfg: CliConfig;
-  private log: ReturnType<typeof getLogger>;
+  private readonly client: Anthropic;
+  private readonly cfg: CliConfig;
+  private readonly log: ReturnType<typeof getLogger>;
 
   /**
    * Creates a new LLM instance

@@ -7,11 +7,11 @@
  * If no other resources are identified, this class might be removed entirely.
  */
 import type { Logger } from 'pino';
-import { bus } from '../../../app/bus/index.js'; // Adjusted path
+import type { bus } from '../../../app/bus/index.js'; // Adjusted path
 
 export class ResourceManager { // Renamed class
-  private log: Logger;
-  private busInstance: typeof bus;
+  private readonly log: Logger;
+  private readonly busInstance: typeof bus;
 
   constructor(busInstance: typeof bus, log: Logger) {
     this.busInstance = busInstance; // Retained for potential future use

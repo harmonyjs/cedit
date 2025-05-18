@@ -1,7 +1,8 @@
 /**
  * Helper functions for the CLI lifecycle, managing stages from initialization to completion.
  */
-import { bus, BusEventType } from '../../../app/bus/index.js'; // Adjusted path
+import type { bus} from '../../../app/bus/index.js';
+import { BusEventType } from '../../../app/bus/index.js'; // Adjusted path
 import type { CliConfig } from '../../../app/model/index.js'; // Adjusted path
 import { parseArguments } from './parser.js'; // Adjusted path and function name
 import { loadConfiguration } from '../config/loader.js'; // Adjusted path

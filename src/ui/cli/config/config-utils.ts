@@ -45,8 +45,8 @@ export function resolveConfigPath(fsAccessSync: (path: string, mode?: number) =>
 
 // Encapsulates the logic for building the configuration
 export class ConfigBuilder {
-  private flags: CliFlags;
-  private fileCfgFull: Partial<CliConfig>;
+  private readonly flags: CliFlags;
+  private readonly fileCfgFull: Partial<CliConfig>;
 
   constructor(flags: CliFlags, fileCfgFull: Partial<CliConfig>) {
     this.flags = flags;

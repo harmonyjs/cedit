@@ -3,7 +3,8 @@
  */
 import chalk from 'chalk';
 import type { Logger } from 'pino';
-import { bus, BusEventType, BusNamespace } from '../../../app/bus/index.js'; // Adjusted path
+import type { bus} from '../../../app/bus/index.js';
+import { BusEventType, BusNamespace } from '../../../app/bus/index.js'; // Adjusted path
 
 /**
  * Interface for progress information.
@@ -15,8 +16,8 @@ export interface ProgressInfo {
 }
 
 export class ProgressMonitor { // Renamed class
-  private log: Logger;
-  private busInstance: typeof bus;
+  private readonly log: Logger;
+  private readonly busInstance: typeof bus;
   private progressIntervalId?: NodeJS.Timeout;
   private fileViewedCount = 0;
   private fileEditedCount = 0;
