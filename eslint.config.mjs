@@ -33,6 +33,7 @@ export default defineConfig([
             "no-console": "off",
             "max-depth": ["error", 4], // Added max-depth rule
             "max-params": ["error", 4],
+            "no-param-reassign": "error", // Запрещает переназначение параметров функции
         },
     },
     {
@@ -50,6 +51,7 @@ export default defineConfig([
             "no-console": "off",
             "max-depth": ["error", 4], // Added max-depth rule
             "max-params": ["error", 4],
+            "no-param-reassign": "error", // Запрещает переназначение параметров функции
         },
     },
     {
@@ -74,6 +76,7 @@ export default defineConfig([
             "complexity": ["error", 10], // Added complexity rule
             "max-depth": ["error", 4], // Added max-depth rule
             "max-params": ["error", 4],
+            "no-param-reassign": "error", // Запрещает переназначение параметров функции
             // Then enable TypeScript-specific version with custom configuration
             "@typescript-eslint/no-unused-vars": ["error", {
                 vars: "all",                     // Check all variables
