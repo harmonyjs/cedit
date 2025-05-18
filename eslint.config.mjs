@@ -32,10 +32,12 @@ const STYLE_RULES = {
   'max-depth': ['error', 4],
   'max-lines': ['error', { max: 200, skipBlankLines: true, skipComments: true }],
   'max-lines-per-function': ['error', { max: 50,  skipBlankLines: true, skipComments: true }],
-  'max-params': ['error', 4],
+  'max-params': ['error', { max: 3 }], // Updated from 4 to 3
   'prefer-const': 'error',
   'prefer-promise-reject-errors': 'error',
   'require-await': 'error',
+  'class-methods-use-this': 'error', // Added
+  'consistent-return': 'error', // Added
 };
 
 const TS_SPECIFIC_RULES = {
@@ -46,6 +48,45 @@ const TS_SPECIFIC_RULES = {
     ignoreRestSiblings: true,
     caughtErrorsIgnorePattern: '^_',
   }],
+  '@typescript-eslint/explicit-function-return-type': ['error', { allowExpressions: false, allowHigherOrderFunctions: false }],
+  '@typescript-eslint/explicit-module-boundary-types': 'error',
+  '@typescript-eslint/switch-exhaustiveness-check': 'error',
+  '@typescript-eslint/strict-boolean-expressions': ['error', { allowString: false, allowNumber: false, allowNullableBoolean: false }],
+  '@typescript-eslint/no-non-null-assertion': 'error',
+  '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', disallowTypeAnnotations: false }],
+  '@typescript-eslint/consistent-type-exports': 'error',
+  // User should configure paths and patterns based on project structure for FSD/layer enforcement
+  '@typescript-eslint/no-restricted-imports': ['error', { paths: [], patterns: [] }],
+  '@typescript-eslint/no-magic-numbers': ['error', { ignore: [0, 1, -1, Infinity], ignoreEnums: true, ignoreNumericLiteralTypes: true }],
+  '@typescript-eslint/prefer-readonly': 'error',
+  '@typescript-eslint/prefer-readonly-parameter-types': ['error', { checkParameterProperties: true }],
+  '@typescript-eslint/require-array-sort-compare': 'error',
+  '@typescript-eslint/member-ordering': ['error', {
+    default: [
+      'signature',
+      'public-static-field',
+      'public-static-method',
+      'public-instance-field',
+      'public-constructor',
+      'public-instance-method',
+      'private-static-field',
+      'private-static-method', // Added missing private-static-method from typical ordering
+      'private-instance-field',
+      'private-constructor',
+      'private-instance-method',
+    ],
+  }],
+  '@typescript-eslint/naming-convention': [
+    'error',
+    { selector: 'default', format: ['camelCase'], leadingUnderscore: 'allow', trailingUnderscore: 'allow' },
+    { selector: 'variable', format: ['camelCase', 'UPPER_CASE'], leadingUnderscore: 'allow', trailingUnderscore: 'allow' },
+    { selector: 'typeLike', format: ['PascalCase'] },
+    { selector: 'enumMember', format: ['PascalCase', 'UPPER_CASE'] },
+    { selector: 'function', format: ['camelCase'] },
+    { selector: 'parameter', format: ['camelCase'], leadingUnderscore: 'allow' },
+    { selector: 'property', format: ['camelCase', 'PascalCase', 'UPPER_CASE'], leadingUnderscore: 'allow' },
+    { selector: 'method', format: ['camelCase'] },
+  ],
 };
 
 // Base config for JavaScript files (to be extended for CJS and ESM)
