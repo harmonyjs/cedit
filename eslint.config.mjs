@@ -34,6 +34,15 @@ export default defineConfig([
             "max-depth": ["error", 4], // Added max-depth rule
             "max-params": ["error", 4],
             "no-param-reassign": "error", // Запрещает переназначение параметров функции
+            "no-duplicate-imports": "error",
+            "eqeqeq": ["error", "always"],
+            "max-classes-per-file": ["error", 1],
+            "max-lines": ["error", { "max": 200, "skipBlankLines": true, "skipComments": true }],
+            "max-lines-per-function": ["error", { "max": 50, "skipBlankLines": true, "skipComments": true }],
+            "no-multi-assign": "error",
+            "prefer-const": "error",
+            "prefer-promise-reject-errors": "error",
+            "require-await": "error",
         },
     },
     {
@@ -52,6 +61,15 @@ export default defineConfig([
             "max-depth": ["error", 4], // Added max-depth rule
             "max-params": ["error", 4],
             "no-param-reassign": "error", // Запрещает переназначение параметров функции
+            "no-duplicate-imports": "error",
+            "eqeqeq": ["error", "always"],
+            "max-classes-per-file": ["error", 1],
+            "max-lines": ["error", { "max": 200, "skipBlankLines": true, "skipComments": true }],
+            "max-lines-per-function": ["error", { "max": 50, "skipBlankLines": true, "skipComments": true }],
+            "no-multi-assign": "error",
+            "prefer-const": "error",
+            "prefer-promise-reject-errors": "error",
+            "require-await": "error",
         },
     },
     {
@@ -77,6 +95,15 @@ export default defineConfig([
             "max-depth": ["error", 4], // Added max-depth rule
             "max-params": ["error", 4],
             "no-param-reassign": "error", // Запрещает переназначение параметров функции
+            "no-duplicate-imports": "error",
+            "eqeqeq": ["error", "always"],
+            "max-classes-per-file": ["error", 1],
+            "max-lines": ["error", { "max": 200, "skipBlankLines": true, "skipComments": true }],
+            "max-lines-per-function": ["error", { "max": 50, "skipBlankLines": true, "skipComments": true }],
+            "no-multi-assign": "error",
+            "prefer-const": "error",
+            "prefer-promise-reject-errors": "error",
+            "require-await": "error",
             // Then enable TypeScript-specific version with custom configuration
             "@typescript-eslint/no-unused-vars": ["error", {
                 vars: "all",                     // Check all variables

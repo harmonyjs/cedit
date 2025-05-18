@@ -49,11 +49,11 @@ import {
  showConfirmation,
  createSpinner,
  cleanupTUI,
- gatherUserInput,
  confirmApplyChanges,
  startLLMProcessing,
  updateSpinnerWithEvent
 } from '../src/ui/tui/index.js';
+import { gatherUserInput } from '../src/ui/tui/user-input.js'; // Added import from new location
 
 // Ensure TTY environment for tests
 beforeAll(() => {
@@ -99,10 +99,14 @@ describe('TUI Unit Tests', () => {
       },
       defaults: {
         dry_run: false,
-        max_tokens: 200000
+        max_tokens: 200000,
+        model: 'default-test-model', // Added
+        retries: 2, // Added
+        sleep_between_requests_ms: 500 // Added
       },
       dry_run: false,
-      max_tokens: 200000
+      max_tokens: 200000,
+      varsOverride: {} // Added
     };
     
     initTUI(config);

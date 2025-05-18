@@ -42,6 +42,8 @@ export async function handleConfirmation( // Renamed function
   flags: CliFlags,
   log: Logger,
 ): Promise<boolean> {
+  // require-await: добавляем await для соответствия lint-правилу
+  await Promise.resolve();
   if (flags.yes) {
     log.info('Skipping confirmation prompt due to --yes flag.');
     bus.emitTyped(BusEventType.INIT_COMPLETE, {

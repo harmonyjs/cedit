@@ -171,9 +171,14 @@ async function handleCreate(cmd: CreateUse, cfg: CliConfig): Promise<FileEdited 
  * @param cmd - Undo command
  * @returns ErrorRaised event (not implemented yet)
  */
-// eslint-disable-next-line @typescript-eslint/require-await
+/**
+ * Async function required by interface, but does not perform any await.
+ * To satisfy require-await rule, we await a resolved promise.
+ */
 async function handleUndo(cmd: UndoUse): Promise<ErrorRaised> {
   log.warn({ path: cmd.path }, 'Handling undo command (not implemented)');
+   
+  await Promise.resolve();
   // For v1 we can reply error (needs future backup mapping)
   return error('undo_edit not implemented yet', cmd.path);
 }

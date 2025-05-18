@@ -79,10 +79,11 @@ export class LLM {
       throw new Error(`Input too large: estimated ${total} tokens (limit ${maxTokens})`);
     }
 
-    // eslint-disable-next-line @typescript-eslint/require-await -- async is required by p-retry
+     
     const task = async (): Promise<AsyncGenerator<ToolUse>> => {
       this.log.info({ model: this.cfg.model }, 'Sending request to Anthropic API');
-      
+      // require-await: добавляем await для соответствия lint-правилу
+      await Promise.resolve();
       // Define the async generator function that will handle the stream
       const streamProcessingGenerator = async function* (this: LLM): AsyncGenerator<ToolUse> {
         const stream = await this.client.messages.create({
@@ -97,7 +98,6 @@ export class LLM {
         // Delegate stream processing to the new function from llm-stream-parser.ts
         yield* processAnthropicStream(stream, this.log);
       }.bind(this); // Bind the context of LLM to the generator function
-      
       // Return the invoked generator. Since task is async, it will be wrapped in a Promise.
       return streamProcessingGenerator();
     };

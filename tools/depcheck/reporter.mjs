@@ -38,6 +38,7 @@ export function formatReport(violations) {
   
   // Output the number of violations by rules
   for (const [rule, ruleViolations] of Object.entries(byRule)) {
+    // eqeqeq: use strict comparison
     console.error(chalk.yellow(`• ${rule}: ${ruleViolations.length} violation${ruleViolations.length !== 1 ? 's' : ''}`));
   }
   
@@ -47,17 +48,17 @@ export function formatReport(violations) {
   for (const [from, entries] of Object.entries(grouped)) {
     console.error(chalk.yellow(`\n${from}`));
     for (const v of entries) {
-      const lineInfo = v.line != null ? chalk.cyan(`:${v.line}`) : '';
+      const lineInfo = v.line !== null ? chalk.cyan(`:${v.line}`) : '';
       const ruleName = chalk.dim(`[${v.rule}]`);
       
       // Basic output for all violations
       let details = `  ${lineInfo}  →  ${chalk.magenta(v.to)} ${ruleName}`;
-      
+
       // Add message if it exists
-      if (v.message) {
+      if (v.message !== undefined && v.message !== null) {
         details += `\n    ${chalk.italic.dim(v.message)}`;
       }
-      
+
       console.error(details);
     }
   }

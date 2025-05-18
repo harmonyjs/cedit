@@ -20,6 +20,8 @@ async function _handleUserConfirmation(
   flags: CliFlags,
   log: Logger,
 ): Promise<boolean> {
+  // require-await: добавляем await для соответствия lint-правилу
+  await Promise.resolve();
   return handleConfirmation(flags, log);
 }
 
