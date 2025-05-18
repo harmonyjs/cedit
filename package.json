@@ -12,6 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "lint": "eslint --fix .",
+    "lint:issues": "zsh ./scripts/lint-issues.sh",
+    "lint:stats": "zsh ./scripts/lint-stats.sh",
     "depcheck": "node tools/depcheck/bin.mjs",
     "typecheck": "tsc --noEmit",
     "pkg-lint": "npmPkgJsonLint ."

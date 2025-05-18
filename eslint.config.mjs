@@ -59,7 +59,6 @@ const TS_SPECIFIC_RULES = {
   '@typescript-eslint/no-restricted-imports': ['error', { paths: [], patterns: [] }],
   '@typescript-eslint/no-magic-numbers': ['error', { ignore: [0, 1, -1, Infinity], ignoreEnums: true, ignoreNumericLiteralTypes: true }],
   '@typescript-eslint/prefer-readonly': 'error',
-  '@typescript-eslint/prefer-readonly-parameter-types': ['error', { checkParameterProperties: true }],
   '@typescript-eslint/require-array-sort-compare': 'error',
   '@typescript-eslint/member-ordering': ['error', {
     default: [
