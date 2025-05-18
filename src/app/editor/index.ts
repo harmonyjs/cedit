@@ -223,12 +223,13 @@ export async function handleToolUse(toolUse: ToolUse, cfg: CliConfig): Promise<D
     case 'undo_edit':
       event = await handleUndo(cmd);
       break;
-    default:
+    default: {
       // Handle cases where 'kind' might be something unexpected
       const unknownCmd = cmd as { kind: string };
       log.error({ unknownKind: unknownCmd.kind }, 'Unsupported command kind received');
       event = error(`Unsupported command kind: ${unknownCmd.kind}`);
       break;
+    }
   }
   
   // Emit the domain event through the bus

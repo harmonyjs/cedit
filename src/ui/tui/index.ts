@@ -86,9 +86,10 @@ function dispatchDomainEvent(busEventType: string, domainEvent: DomainEvent): vo
       handleErrorRaisedEvent(domainEvent, activeSpinner);
       activeSpinner = null; // Ensure spinner is reset after error
       break;
-    default:
+    default: {
       const _exhaustiveCheck: never = domainEvent;
       logger.warn({ busEventType, eventSubtype: (_exhaustiveCheck as DomainEvent).type }, 'Received unhandled domain event subtype in dispatchDomainEvent');
+    }
   }
 }
 // --- END: Refactored Domain Event Handling ---
@@ -328,12 +329,13 @@ export function handleDomainEvent(eventType: string, event: DomainEvent): void {
       handleErrorRaisedEvent(event, activeSpinner);
       activeSpinner = null; // Ensure spinner is reset after error
       break;
-    default:
+    default: {
       // event is 'never' here due to exhaustive switch.
       // We access the original event type from the payload.
       // The following lines referencing 'payload' are removed as 'payload' is not in scope here.
       // This part of the logic needs to be re-evaluated if unhandled domain events are expected
       // and need specific logging from this point. For now, the dispatchDomainEvent handles unknown subtypes.
       logger.warn({ busEventType: eventType /* payload is not in scope here */ }, 'Received DOMAIN_EVENT_EMITTED with unknown event structure in default case of handleDomainEvent');
+    }
   }
 }

@@ -1,116 +1,135 @@
-import { defineConfig } from "eslint/config";
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import tsParser from "@typescript-eslint/parser";
-import js from "@eslint/js";
-import globals from "globals";
+/**
+ * ESLint flat-config for project **cedit**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 💡 Порядок блоков в flat-config:
+ * 1. Игнорируемые файлы (`ignores`).
+ * 2. Глобальная регистрация плагинов (`plugins`), особенно важен алиас `eslint: js`.
+ * 3. Базовые пресеты (например, `js.configs.recommended`).
+ * 4. Конфигурации для конкретных расширений файлов или директорий (например, для `*.js`, `*.mjs`, `src/**\/*.ts`).
+ *
+ * Соблюдение этого порядка и правильная регистрация плагинов помогают избежать
+ * таких ошибок, как «Plugin "." not found» и обеспечивают предсказуемое поведение правил.
+ * Ключевым для работы с `@typescript-eslint` в ESLint v9+ является алиас `eslint: js`.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 
+import { defineConfig } from 'eslint/config';
+import js from '@eslint/js';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import globals from 'globals'; // Added import
+
+// 1. Общие константы ----------------------------------------------------------
+const NODE_GLOBALS = { ...globals.node };
+
+const STYLE_RULES = {
+  'no-console': 'off',
+  'no-duplicate-imports': 'error',
+  'no-multi-assign': 'error',
+  'no-param-reassign': 'error',
+  eqeqeq: ['error', 'always'],
+  'max-classes-per-file': ['error', 1],
+  'max-depth': ['error', 4],
+  'max-lines': ['error', { max: 200, skipBlankLines: true, skipComments: true }],
+  'max-lines-per-function': ['error', { max: 50,  skipBlankLines: true, skipComments: true }],
+  'max-params': ['error', 4],
+  'prefer-const': 'error',
+  'prefer-promise-reject-errors': 'error',
+  'require-await': 'error',
+};
+
+const TS_SPECIFIC_RULES = {
+  complexity: ['error', 10],
+  '@typescript-eslint/no-unused-vars': ['error', {
+    vars: 'all',
+    args: 'after-used',
+    ignoreRestSiblings: true,
+    caughtErrorsIgnorePattern: '^_',
+  }],
+};
+
+// Base config for JavaScript files (to be extended for CJS and ESM)
+const JS_BASE = {
+  languageOptions: {
+    ecmaVersion: 'latest',
+    globals: NODE_GLOBALS,
+  },
+  rules: STYLE_RULES,
+};
+
+// ────────────────────────── Конфигурация ───────────────────────
 export default defineConfig([
-    // Start with global ignores
-    {
-        ignores: [
-            "dist/**",
-            "node_modules/**",
-            ".vscode/**",
-            "eslint.config.mjs", // Explicitly ignore the ESLint config file itself from TS parsing
-            "dependency-cruiser.cjs",
-        ],
+  // 1️⃣ Игнорируемые файлы -----------------------------------------------------
+  {
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      '.vscode/**',
+      'eslint.config.mjs', // Конфиг линтера обычно исключают из линтинга.
+      'dependency-cruiser.cjs',
+    ],
+  },
+
+  // 1️⃣ Регистрация всех плагинов «база» --------------------------------------
+  {
+    plugins: {
+      eslint: js, // Core ESLint rules aliased as 'eslint'. CRITICAL for @typescript-eslint presets in flat config.
+      '@typescript-eslint': tsPlugin,
     },
-    
-    // Configuration for JavaScript files (.js, .cjs)
-    {
-        files: ["**/*.js", "**/*.cjs"],
-        ...js.configs.recommended,
-        languageOptions: {
-            ecmaVersion: "latest",
-            sourceType: "commonjs", // Assuming .cjs files are CommonJS
-            globals: {
-                ...globals.node,
-            }
-        },
-        rules: {
-            ...js.configs.recommended.rules,
-            "no-unused-vars": "off", // Disable the base rule
-            "no-console": "off",
-            "max-depth": ["error", 4], // Added max-depth rule
-            "max-params": ["error", 4],
-            "no-param-reassign": "error", // Запрещает переназначение параметров функции
-            "no-duplicate-imports": "error",
-            "eqeqeq": ["error", "always"],
-            "max-classes-per-file": ["error", 1],
-            "max-lines": ["error", { "max": 200, "skipBlankLines": true, "skipComments": true }],
-            "max-lines-per-function": ["error", { "max": 50, "skipBlankLines": true, "skipComments": true }],
-            "no-multi-assign": "error",
-            "prefer-const": "error",
-            "prefer-promise-reject-errors": "error",
-            "require-await": "error",
-        },
+  },
+
+  // 2️⃣ Базовый JS-пресет (для всех файлов, включая .js, .mjs, .cjs) ---------
+  js.configs.recommended,
+
+  // --- CommonJS / обычный .js, .cjs -----------------------------------------
+  {
+    files: ['**/*.js', '**/*.cjs'],
+    ...JS_BASE,
+    languageOptions: {
+      ...JS_BASE.languageOptions,
+      sourceType: 'commonjs',
     },
-    {
-        // Configuration for ESModule JavaScript files (.mjs)
-        // These are not parsed with typescript-eslint
-        files: ["**/*.mjs"],
-        languageOptions: {
-            ecmaVersion: "latest",
-            sourceType: "module",
-            globals: {
-                ...globals.node, // Or browser, depending on the context of .mjs files
-            }
-        },
-        rules: {
-            "no-console": "off",
-            "max-depth": ["error", 4], // Added max-depth rule
-            "max-params": ["error", 4],
-            "no-param-reassign": "error", // Запрещает переназначение параметров функции
-            "no-duplicate-imports": "error",
-            "eqeqeq": ["error", "always"],
-            "max-classes-per-file": ["error", 1],
-            "max-lines": ["error", { "max": 200, "skipBlankLines": true, "skipComments": true }],
-            "max-lines-per-function": ["error", { "max": 50, "skipBlankLines": true, "skipComments": true }],
-            "no-multi-assign": "error",
-            "prefer-const": "error",
-            "prefer-promise-reject-errors": "error",
-            "require-await": "error",
-        },
+    rules: {
+        ...JS_BASE.rules,
+        'no-unused-vars': 'off',
+    }
+  },
+
+  // --- ES-модули .mjs --------------------------------------------------------
+  {
+    files: ['**/*.mjs'],
+    ...JS_BASE,
+    languageOptions: {
+      ...JS_BASE.languageOptions,
+      sourceType: 'module',
     },
-    {
-        // Configuration for TypeScript files
-        files: ["src/**/*.ts"],
-        plugins: {
-            "@typescript-eslint": typescriptEslint,
-        },
-        languageOptions: {
-            parser: tsParser,
-            sourceType: "module",
-            parserOptions: {
-                project: "./tsconfig.json",
-            },
-            globals: {
-                ...globals.node, // Assuming TS files are for Node.js environment
-            }
-        },
-        rules: {
-            ...typescriptEslint.configs["eslint-recommended"].rules,
-            ...typescriptEslint.configs["recommended-type-checked"].rules,
-            "complexity": ["error", 10], // Added complexity rule
-            "max-depth": ["error", 4], // Added max-depth rule
-            "max-params": ["error", 4],
-            "no-param-reassign": "error", // Запрещает переназначение параметров функции
-            "no-duplicate-imports": "error",
-            "eqeqeq": ["error", "always"],
-            "max-classes-per-file": ["error", 1],
-            "max-lines": ["error", { "max": 200, "skipBlankLines": true, "skipComments": true }],
-            "max-lines-per-function": ["error", { "max": 50, "skipBlankLines": true, "skipComments": true }],
-            "no-multi-assign": "error",
-            "prefer-const": "error",
-            "prefer-promise-reject-errors": "error",
-            "require-await": "error",
-            // Then enable TypeScript-specific version with custom configuration
-            "@typescript-eslint/no-unused-vars": ["error", {
-                vars: "all",                     // Check all variables
-                args: "after-used",              // Consider params used if any params to their right are used
-                ignoreRestSiblings: true,        // Ignore rest pattern variables like `const { a, ...rest } = obj`
-                caughtErrorsIgnorePattern: "^_", // Skip any caught errors starting with underscore
-            }],
-        },
+  },
+
+  // 3️⃣ TypeScript type-aware rules for src files.
+  // We use .map() on tsPlugin.configs['flat/recommended-type-checked'] (which is an array of configs)
+  // to ensure each resulting config object is explicitly scoped to 'src' files and
+  // correctly references './tsconfig.json'. This is crucial because our tsconfig.json
+  // only includes 'src', and this approach prevents type-aware rules from erroring
+  // on TypeScript files outside 'src' (e.g., in specs/, tests/).
+  ...(tsPlugin.configs['flat/recommended-type-checked'].map(config => ({
+    ...config, // Spread the original config from the preset
+    files: ['src/**/*.ts', 'src/**/*.tsx'], // Apply only to src TypeScript files
+    languageOptions: {
+      ...config.languageOptions, // Preserve existing languageOptions from preset
+      parser: tsParser, // Ensure our parser is set
+      parserOptions: {
+        ...(config.languageOptions?.parserOptions), // Preserve existing parserOptions
+        project: './tsconfig.json', // Explicit project path
+      },
+      globals: {
+        ...NODE_GLOBALS,
+        ...(config.languageOptions?.globals), // Preserve and merge globals
+      }
     },
+    rules: {
+      ...config.rules, // Rules from flat/recommended-type-checked
+      ...STYLE_RULES,    // Apply STYLE_RULES
+      ...TS_SPECIFIC_RULES, // Apply TS_SPECIFIC_RULES
+    }
+  }))),
 ]);

@@ -123,7 +123,7 @@ function interpolate(spec: Spec, cfg: CliConfig): Spec {
     // Basic placeholder replacement
     const placeholder = `{{var.${k}}}`;
     // Use regex for global replacement
-    const regex = new RegExp(placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g');
+    const regex = new RegExp(placeholder.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g');
     sys = sys.replace(regex, v);
     usr = usr.replace(regex, v);
   }

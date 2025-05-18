@@ -6,7 +6,6 @@
  */
 
 import { execa } from 'execa';
-import chalk from 'chalk';
 import { rules } from './rules/index.mjs';
 import { formatReport } from './reporter.mjs';
 
