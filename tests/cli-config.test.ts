@@ -32,10 +32,10 @@ vi.mock('@clack/prompts', () => ({
 // Mock runner function and emit events on the bus
 const runMock = vi.fn().mockImplementation(async (_specPath, _cfg) => {
   // Import bus here to avoid circular dependency
-  const { bus, BusEventType } = await import('../src/app/bus/index.js');
+  const { bus, BUS_EVENT_TYPE } = await import('../src/app/bus/index.js');
   
   // Emit finish summary event
-  bus.emitTyped(BusEventType.FINISH_SUMMARY, {
+  bus.emitTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, {
     timestamp: Date.now(),
     stats: {
       filesEdited: 3,
@@ -91,7 +91,7 @@ describe('CLI Config Loading', () => {
     // Set up mock file system with all config files
     mock({
       // Local config (highest priority)
-      '.cedit.yml': 'model: local-model\ndry_run: true',
+      '.cedit.yml': 'model: local-model\ndryRun: true',
       
       // Global config in ~/.config/cedit/
       [path.join(homeDir, '.config', 'cedit')]: {
@@ -122,7 +122,7 @@ describe('CLI Config Loading', () => {
     
     // Local config values should take precedence
     expect(config.model).toBe('local-model');
-    expect(config.dry_run).toBe(true);
+    expect(config.dryRun).toBe(true);
   });
   
   it('should fall back to global config in ~/.config/cedit/ if local config doesn\'t exist', async () => {
@@ -130,7 +130,7 @@ describe('CLI Config Loading', () => {
     mock({
       // Global config in ~/.config/cedit/
       [path.join(homeDir, '.config', 'cedit')]: {
-        'config.yml': 'model: global-config-model\ndry_run: true'
+        'config.yml': 'model: global-config-model\ndryRun: true'
       },
       
       // Global config in ~/.cedit.yml
@@ -157,14 +157,14 @@ describe('CLI Config Loading', () => {
     
     // Global config values from ~/.config/cedit/ should be used
     expect(config.model).toBe('global-config-model');
-    expect(config.dry_run).toBe(true);
+    expect(config.dryRun).toBe(true);
   });
   
   it('should fall back to global config in ~/.cedit.yml if other configs don\'t exist', async () => {
     // Set up mock file system with only ~/.cedit.yml
     mock({
       // Global config in ~/.cedit.yml
-      [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndry_run: true',
+      [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndryRun: true',
       
       // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
@@ -187,7 +187,7 @@ describe('CLI Config Loading', () => {
     
     // Global config values from ~/.cedit.yml should be used
     expect(config.model).toBe('home-model');
-    expect(config.dry_run).toBe(true);
+    expect(config.dryRun).toBe(true);
   });
   
   it('should use default values if no config files exist', async () => {
@@ -214,14 +214,14 @@ describe('CLI Config Loading', () => {
     
     // Default values should be used
     expect(config.model).toBe('claude-3-sonnet-20240229'); // Default model
-    expect(config.dry_run).toBe(false); // Default dry_run
+    expect(config.dryRun).toBe(false); // Default dryRun
   });
   
   it('should handle malformed config files gracefully', async () => {
     // Set up mock file system with malformed config
     mock({
       // Malformed local config - this is truly malformed YAML that will cause a parsing error
-      '.cedit.yml': 'model: local-model\ndry_run: true\n  - invalid: [yaml: syntax',
+      '.cedit.yml': 'model: local-model\ndryRun: true\n  - invalid: [yaml: syntax',
       
       // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
@@ -244,7 +244,7 @@ describe('CLI Config Loading', () => {
     
     // Default values should be used since config file was malformed
     expect(config.model).toBe('claude-3-sonnet-20240229');
-    expect(config.dry_run).toBe(false);
+    expect(config.dryRun).toBe(false);
     
     // Verify that a warning was logged
     expect(console.warn).toHaveBeenCalled();
@@ -254,7 +254,7 @@ describe('CLI Config Loading', () => {
     // Set up mock file system with config file
     mock({
       // Local config
-      '.cedit.yml': 'model: local-model\ndry_run: false',
+      '.cedit.yml': 'model: local-model\ndryRun: false',
       
       // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
@@ -284,7 +284,7 @@ describe('CLI Config Loading', () => {
     
     // CLI arguments should override config file values
     expect(config.model).toBe('cli-model');
-    expect(config.dry_run).toBe(true);
+    expect(config.dryRun).toBe(true);
   });
   
   it('should correctly parse variable overrides from CLI arguments', async () => {
@@ -327,7 +327,7 @@ describe('CLI Config Loading', () => {
     it('should load local config file if it exists', async () => {
       // Set up mock file system with only local config
       mock({
-        '.cedit.yml': 'model: local-model\ndry_run: true',
+        '.cedit.yml': 'model: local-model\ndryRun: true',
         
         // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
@@ -338,7 +338,7 @@ describe('CLI Config Loading', () => {
       
       expect(config).toEqual({
         model: 'local-model',
-        dry_run: true
+        dryRun: true
       });
     });
     
@@ -347,7 +347,7 @@ describe('CLI Config Loading', () => {
       mock({
         // Global config in ~/.config/cedit/
         [path.join(homeDir, '.config', 'cedit')]: {
-          'config.yml': 'model: global-config-model\ndry_run: true'
+          'config.yml': 'model: global-config-model\ndryRun: true'
         },
         
         // Mock temp directories
@@ -359,7 +359,7 @@ describe('CLI Config Loading', () => {
       
       expect(config).toEqual({
         model: 'global-config-model',
-        dry_run: true
+        dryRun: true
       });
     });
     
@@ -367,7 +367,7 @@ describe('CLI Config Loading', () => {
       // Set up mock file system without local config or ~/.config/cedit/
       mock({
         // Global config in ~/.cedit.yml
-        [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndry_run: true',
+        [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndryRun: true',
         
         // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
@@ -378,7 +378,7 @@ describe('CLI Config Loading', () => {
       
       expect(config).toEqual({
         model: 'home-model',
-        dry_run: true
+        dryRun: true
       });
     });
     
@@ -398,7 +398,7 @@ describe('CLI Config Loading', () => {
     it('should handle malformed config files gracefully', async () => {
       // Set up mock file system with malformed config
       mock({
-        '.cedit.yml': 'model: local-model\ndry_run: true\n  - invalid: [yaml: syntax',
+        '.cedit.yml': 'model: local-model\ndryRun: true\n  - invalid: [yaml: syntax',
         
         // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
@@ -415,7 +415,7 @@ describe('CLI Config Loading', () => {
       
       // Should log a warning
       expect(warnSpy).toHaveBeenCalled();
-      expect(warnSpy.mock.calls[0][0]).toMatch(/Warning: Could not load or parse config file at .*?\.cedit\.yml: Nested mappings are not allowed in compact mappings at line \d+, column \d+:\n\s*dry_run: true\n\s*\^/);
+      expect(warnSpy.mock.calls[0][0]).toMatch(/Warning: Could not load or parse config file at .*?\.cedit\.yml: Nested mappings are not allowed in compact mappings at line \d+, column \d+:\n\s*dryRun: true\n\s*\^/);
     });
   });
   
@@ -468,16 +468,16 @@ describe('CLI Config Loading', () => {
       // Mock runner to emit error events
       runMock.mockImplementationOnce(async (_specPath, _cfg) => {
         // Import bus here to avoid circular dependency
-        const { bus, BusEventType } = await import('../src/app/bus/index.js');
+        const { bus, BUS_EVENT_TYPE } = await import('../src/app/bus/index.js');
         
         // Emit domain error event
-        bus.emitTyped(BusEventType.DOMAIN_ERROR, {
+        bus.emitTyped(BUS_EVENT_TYPE.DOMAIN_ERROR, {
           timestamp: Date.now(),
           event: { type: 'ErrorRaised', message: 'Test error', path: 'file.txt' } as any
         });
         
         // Emit finish abort event
-        bus.emitTyped(BusEventType.FINISH_ABORT, {
+        bus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, {
           timestamp: Date.now(),
           reason: 'Test error',
           code: 'TEST_ERROR'
@@ -541,7 +541,7 @@ describe('loadCliConfig', () => {
   it('should load local config file if it exists', async () => {
     // Set up mock file system with only local config
     mock({
-      '.cedit.yml': 'model: local-model\ndry_run: true',
+      '.cedit.yml': 'model: local-model\ndryRun: true',
       
       // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
@@ -552,7 +552,7 @@ describe('loadCliConfig', () => {
     
     expect(config).toEqual({
       model: 'local-model',
-      dry_run: true
+      dryRun: true
     });
   });
   
@@ -561,7 +561,7 @@ describe('loadCliConfig', () => {
     mock({
       // Global config in ~/.config/cedit/
       [path.join(homeDir, '.config', 'cedit')]: {
-        'config.yml': 'model: global-config-model\ndry_run: true'
+        'config.yml': 'model: global-config-model\ndryRun: true'
       },
       
       // Mock temp directories
@@ -573,7 +573,7 @@ describe('loadCliConfig', () => {
     
     expect(config).toEqual({
       model: 'global-config-model',
-      dry_run: true
+      dryRun: true
     });
   });
   
@@ -581,7 +581,7 @@ describe('loadCliConfig', () => {
     // Set up mock file system without local config or ~/.config/cedit/
     mock({
       // Global config in ~/.cedit.yml
-      [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndry_run: true',
+      [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndryRun: true',
       
       // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
@@ -592,7 +592,7 @@ describe('loadCliConfig', () => {
     
     expect(config).toEqual({
       model: 'home-model',
-      dry_run: true
+      dryRun: true
     });
   });
   
@@ -612,7 +612,7 @@ describe('loadCliConfig', () => {
   it('should handle malformed config files gracefully', async () => {
     // Set up mock file system with malformed config
     mock({
-      '.cedit.yml': 'model: local-model\ndry_run: true\n  - invalid: [yaml: syntax',
+      '.cedit.yml': 'model: local-model\ndryRun: true\n  - invalid: [yaml: syntax',
       
       // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
@@ -629,6 +629,6 @@ describe('loadCliConfig', () => {
     
     // Should log a warning
     expect(warnSpy).toHaveBeenCalled();
-    expect(warnSpy.mock.calls[0][0]).toMatch(/Warning: Could not load or parse config file at .*?\.cedit\.yml: Nested mappings are not allowed in compact mappings at line \d+, column \d+:\n\s*dry_run: true\n\s*\^/);
+    expect(warnSpy.mock.calls[0][0]).toMatch(/Warning: Could not load or parse config file at .*?\.cedit\.yml: Nested mappings are not allowed in compact mappings at line \d+, column \d+:\n\s*dryRun: true\n\s*\^/);
   });
 });

@@ -5,8 +5,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { 
   bus, 
-  BusEventType, 
-  BusNamespace,
+  BUS_EVENT_TYPE, 
+  BUS_NAMESPACE,
   emitInitConfig,
   emitDomainEvent,
   emitFinishSummary,
@@ -30,22 +30,26 @@ vi.mock('../src/infra/logging/index.js', () => ({
 
 // Create a minimal CliConfig for testing
 const mockConfig: CliConfig = {
-  anthropic_api_key: 'test-key',
+  anthropicApiKey: 'test-key',
   model: 'test-model',
   retries: 1,
-  sleep_between_requests_ms: 0,
+  sleepBetweenRequestsMs: 0,
   log: {
     level: 'info',
     dir: '/tmp/cedit-tests'
   },
   backup: {
     dir: '/tmp',
-    keep_for_days: 0
+    keepForDays: 0
   },
   defaults: {
-    dry_run: false,
-    max_tokens: 0
-  }
+    dryRun: false,
+    maxTokens: 0,
+    model: 'default-model', // Added
+    retries: 0, // Added
+    sleepBetweenRequestsMs: 0 // Added
+  },
+  varsOverride: {} // Added to satisfy CliConfig
 };
 
 // Create mock domain events for testing
@@ -79,7 +83,7 @@ describe('Event Bus', () => {
 
     it('should emit and receive events', () => {
       const listener = vi.fn();
-      bus.onTyped(BusEventType.INIT_CONFIG, listener);
+      bus.onTyped(BUS_EVENT_TYPE.INIT_CONFIG, listener);
       
       emitInitConfig(mockConfig);
       
@@ -91,7 +95,7 @@ describe('Event Bus', () => {
 
     it('should support one-time listeners', () => {
       const listener = vi.fn();
-      bus.onceTyped(BusEventType.INIT_CONFIG, listener);
+      bus.onceTyped(BUS_EVENT_TYPE.INIT_CONFIG, listener);
       
       emitInitConfig(mockConfig);
       emitInitConfig(mockConfig);
@@ -101,12 +105,12 @@ describe('Event Bus', () => {
 
     it('should allow unsubscribing from events', () => {
       const listener = vi.fn();
-      bus.onTyped(BusEventType.INIT_CONFIG, listener);
+      bus.onTyped(BUS_EVENT_TYPE.INIT_CONFIG, listener);
       
       emitInitConfig(mockConfig);
       expect(listener).toHaveBeenCalledTimes(1);
       
-      bus.offTyped(BusEventType.INIT_CONFIG, listener);
+      bus.offTyped(BUS_EVENT_TYPE.INIT_CONFIG, listener);
       
       emitInitConfig(mockConfig);
       expect(listener).toHaveBeenCalledTimes(1); // Still 1, not called again
@@ -116,13 +120,13 @@ describe('Event Bus', () => {
   describe('Event namespacing', () => {
     it('should support namespace wildcards', () => {
       const namespaceListener = vi.fn();
-      bus.onNamespace(BusNamespace.INIT, namespaceListener);
+      bus.onNamespace(BUS_NAMESPACE.INIT, namespaceListener);
       
       emitInitConfig(mockConfig);
       
       expect(namespaceListener).toHaveBeenCalledTimes(1);
       expect(namespaceListener).toHaveBeenCalledWith(
-        BusEventType.INIT_CONFIG,
+        BUS_EVENT_TYPE.INIT_CONFIG,
         expect.objectContaining({ config: mockConfig })
       );
     });
@@ -141,7 +145,7 @@ describe('Event Bus', () => {
   describe('Helper functions', () => {
     it('should emit init config events', () => {
       const listener = vi.fn();
-      bus.onTyped(BusEventType.INIT_CONFIG, listener);
+      bus.onTyped(BUS_EVENT_TYPE.INIT_CONFIG, listener);
       
       emitInitConfig(mockConfig);
       
@@ -154,8 +158,8 @@ describe('Event Bus', () => {
       const fileViewedListener = vi.fn();
       const errorListener = vi.fn();
       
-      bus.onTyped(BusEventType.DOMAIN_FILE_VIEWED, fileViewedListener);
-      bus.onTyped(BusEventType.DOMAIN_ERROR, errorListener);
+      bus.onTyped(BUS_EVENT_TYPE.DOMAIN_FILE_VIEWED, fileViewedListener);
+      bus.onTyped(BUS_EVENT_TYPE.DOMAIN_ERROR, errorListener);
       
       emitDomainEvent(mockFileViewedEvent);
       emitDomainEvent(mockErrorEvent);
@@ -171,7 +175,7 @@ describe('Event Bus', () => {
 
     it('should emit finish summary events', () => {
       const listener = vi.fn();
-      bus.onTyped(BusEventType.FINISH_SUMMARY, listener);
+      bus.onTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, listener);
       
       const stats = {
         filesEdited: 2,
@@ -194,7 +198,7 @@ describe('Event Bus', () => {
 
     it('should emit finish abort events', () => {
       const listener = vi.fn();
-      bus.onTyped(BusEventType.FINISH_ABORT, listener);
+      bus.onTyped(BUS_EVENT_TYPE.FINISH_ABORT, listener);
       
       emitFinishAbort('Operation cancelled', 'USER_CANCEL');
       
@@ -216,7 +220,7 @@ describe('Event Bus', () => {
       
       expect(() => {
         // @ts-ignore - intentionally passing invalid payload for test
-        bus.emitTyped(BusEventType.INIT_CONFIG, invalidPayload);
+        bus.emitTyped(BUS_EVENT_TYPE.INIT_CONFIG, invalidPayload);
       }).toThrow(/config is required/);
     });
 
@@ -225,7 +229,7 @@ describe('Event Bus', () => {
       
       expect(() => {
         // @ts-ignore - intentionally passing invalid payload for test
-        bus.emitTyped(BusEventType.DOMAIN_FILE_VIEWED, invalidPayload);
+        bus.emitTyped(BUS_EVENT_TYPE.DOMAIN_FILE_VIEWED, invalidPayload);
       }).toThrow(/event with type is required/);
     });
 
@@ -234,7 +238,7 @@ describe('Event Bus', () => {
       
       expect(() => {
         // @ts-ignore - intentionally passing invalid payload for test
-        bus.emitTyped(BusEventType.FINISH_SUMMARY, invalidPayload);
+        bus.emitTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, invalidPayload);
       }).toThrow(/stats is required/);
     });
 
@@ -243,7 +247,7 @@ describe('Event Bus', () => {
       
       expect(() => {
         // @ts-ignore - intentionally passing invalid payload for test
-        bus.emitTyped(BusEventType.FINISH_ABORT, invalidPayload);
+        bus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, invalidPayload);
       }).toThrow(/reason is required/);
     });
 
@@ -254,7 +258,7 @@ describe('Event Bus', () => {
       
       // This should not throw when validation is disabled
       // @ts-ignore - intentionally passing invalid payload for test
-      expect(() => bus.emitTyped(BusEventType.INIT_CONFIG, invalidPayload)).not.toThrow();
+      expect(() => bus.emitTyped(BUS_EVENT_TYPE.INIT_CONFIG, invalidPayload)).not.toThrow();
     });
   });
 

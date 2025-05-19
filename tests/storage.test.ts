@@ -15,23 +15,28 @@ vi.mock('../src/infra/logging/index.js', () => ({
 
 // Mock CliConfig for testing
 const cfg: CliConfig = {
-  anthropic_api_key: 'test-key',
+  anthropicApiKey: 'test-key',
   model: 'test-model',
   retries: 0,
-  sleep_between_requests_ms: 0,
+  sleepBetweenRequestsMs: 0,
   log: { 
     level: 'info', 
     dir: '/log' 
   },
   backup: {
     dir: '/bak',
-    keep_for_days: 7
+    keepForDays: 7
   },
   defaults: {
-    dry_run: false,
-    max_tokens: 1000
+    dryRun: false,
+    maxTokens: 1000,
+    model: 'default-model',
+    retries: 0,
+    sleepBetweenRequestsMs: 0
   },
-  dry_run: true
+  dryRun: true,
+  maxTokens: 1000,
+  varsOverride: {}
 };
 
 // Initialize storage with config before tests
@@ -41,6 +46,7 @@ beforeEach(() => {
   // Set up a mock file system
   mock({
     'file.md': 'first\nsecond\nthird',
+    'file.updated.md': '', // Add an empty file.updated.md for the test
     '/bak': {},
     '/log': {}
   });

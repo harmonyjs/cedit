@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import mock from 'mock-fs';
 import { run } from '../src/app/runner/index.js';
 import type { CliConfig, ToolUse, DomainEvent } from '../src/app/model/index.js';
-import { bus, BusEventType, type FinishSummaryEvent } from '../src/app/bus/index.js';
+import { bus, BUS_EVENT_TYPE, type FinishSummaryEvent } from '../src/app/bus/index.js';
 
 // Mock dependencies
 vi.mock('../src/infra/logging/index.js', () => ({
@@ -89,7 +89,7 @@ describe('runner run', () => {
       finishStats = payload.stats;
     };
     
-    bus.onTyped(BusEventType.FINISH_SUMMARY, finishListener);
+    bus.onTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, finishListener);
 
     // Act
     await run('spec.yml', baseCfg);
@@ -112,7 +112,7 @@ describe('runner run', () => {
     });
     
     // Clean up event listener
-    bus.offTyped(BusEventType.FINISH_SUMMARY, finishListener);
+    bus.offTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, finishListener);
   });
 
   it('handles errors from the editor', async () => {
@@ -130,7 +130,7 @@ describe('runner run', () => {
       }
     };
     
-    bus.onTyped(BusEventType.DOMAIN_ERROR, errorListener);
+    bus.onTyped(BUS_EVENT_TYPE.DOMAIN_ERROR, errorListener);
 
     // Act
     await run('spec.yml', baseCfg);
@@ -141,7 +141,7 @@ describe('runner run', () => {
     expect((errorEvent as any)?.message).toBe('Editor failed');
     
     // Clean up event listener
-    bus.offTyped(BusEventType.DOMAIN_ERROR, errorListener);
+    bus.offTyped(BUS_EVENT_TYPE.DOMAIN_ERROR, errorListener);
   });
 
    it('handles errors loading the spec file', async () => {
@@ -155,7 +155,7 @@ describe('runner run', () => {
       abortReason = payload.reason;
     };
     
-    bus.onTyped(BusEventType.FINISH_ABORT, abortListener);
+    bus.onTyped(BUS_EVENT_TYPE.FINISH_ABORT, abortListener);
 
     // Act
     await run('spec.yml', baseCfg);
@@ -165,7 +165,7 @@ describe('runner run', () => {
     expect(abortReason).toContain('Runner failed: ENOENT'); // Error from fs.readFile
     
     // Clean up event listener
-    bus.offTyped(BusEventType.FINISH_ABORT, abortListener);
+    bus.offTyped(BUS_EVENT_TYPE.FINISH_ABORT, abortListener);
   });
 
   // Add test for LLM stream error if possible (might require more complex mocking)
