@@ -20,7 +20,7 @@ export function displayInitialInfo(config: CliConfig, getVersion: () => string):
   process.stdout.write('\x1Bc'); // Clear screen
   intro(`cedit v${getVersion()}`);
   log.info(`Using model: ${chalk.cyan(config.model)}`);
-  if (config.dry_run) {
+  if (config.dryRun === true) {
     log.warn(chalk.yellow('DRY RUN MODE - No files will be modified'));
   }
 }
@@ -31,7 +31,11 @@ export function displayInitialInfo(config: CliConfig, getVersion: () => string):
 export async function logLoadedConfigFile(fs: typeof import('node:fs/promises'), fsSync: typeof import('node:fs'), logger: Pick<Logger, 'error'>): Promise<void> {
   if (!process.stdout.isTTY) return;
   try {
-    const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+    const homeDir = (process.env.HOME !== undefined && process.env.HOME !== '') ? 
+                    process.env.HOME : 
+                    ((process.env.USERPROFILE !== undefined && process.env.USERPROFILE !== '') ? 
+                    process.env.USERPROFILE : 
+                    '');
     const candidates = [
       './.cedit.yml',
       `${homeDir}/.config/cedit/config.yml`,

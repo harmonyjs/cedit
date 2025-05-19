@@ -63,16 +63,19 @@ const TS_SPECIFIC_RULES = {
   '@typescript-eslint/member-ordering': ['error', {
     default: [
       'signature',
+      // fields
       'public-static-field',
-      'public-static-method',
-      'public-instance-field',
-      'public-constructor',
-      'public-instance-method',
       'private-static-field',
-      'private-static-method', // Added missing private-static-method from typical ordering
+      'public-instance-field',
       'private-instance-field',
+      // constructors
+      'public-constructor',
       'private-constructor',
+      // methods
+      'public-instance-method',
       'private-instance-method',
+      'private-static-method',
+      'public-static-method',
     ],
   }],
   '@typescript-eslint/naming-convention': [

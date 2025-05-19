@@ -21,7 +21,7 @@ import type {
   ErrorRaised,
   CliConfig,
 } from '../model/index.js';
-import * as Storage from '../../infra/storage/index.js';
+import * as storage from '../../infra/storage/index.js';
 import { getLogger } from '../../infra/logging/index.js';
 import path from 'node:path';
 import os from 'node:os';
@@ -29,27 +29,27 @@ import { emitDomainEvent } from '../bus/index.js';
 
 // Create a minimal default logger configuration
 const DEFAULT_LOG_CONFIG: CliConfig = {
-  anthropic_api_key: process.env.ANTHROPIC_API_KEY || '',
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
   model: 'claude-3-sonnet-20240229',
   retries: 3,
-  sleep_between_requests_ms: 1000,
+  sleepBetweenRequestsMs: 1000,
   log: {
     level: 'info' as const,
     dir: path.join(os.tmpdir(), 'cedit', 'logs'),
   },
   backup: {
     dir: path.join(os.tmpdir(), 'cedit', 'backups'),
-    keep_for_days: 0,
+    keepForDays: 0,
   },
   defaults: {
-    dry_run: false,
-    max_tokens: 200000,
-    model: 'claude-3-sonnet-20240229', // Ensured
-    retries: 3, // Ensured
-    sleep_between_requests_ms: 1000, // Ensured
+    dryRun: false,
+    maxTokens: 200000,
+    model: 'claude-3-sonnet-20240229',
+    retries: 3,
+    sleepBetweenRequestsMs: 1000,
   },
-  dry_run: false,
-  max_tokens: 200000,
+  dryRun: false,
+  maxTokens: 200000,
   varsOverride: {},
 };
 
@@ -77,7 +77,7 @@ function error(msg: string, path?: string): ErrorRaised {
 async function handleView(cmd: ViewUse): Promise<FileViewed | ErrorRaised> {
   log.info({ path: cmd.path }, 'Handling view command');
   try {
-    const lines = await Storage.readFileLines(cmd.path);
+    const lines = await storage.readFileLines(cmd.path);
     // TODO: Implement line range filtering if cmd.lineFrom/lineTo are provided
     return {
       type: 'FileViewed',
@@ -104,7 +104,7 @@ async function handleReplace(cmd: ReplaceUse, cfg: CliConfig): Promise<FileEdite
   }
   try {
     // Delegate directly to storage which handles backup and returns FileEdited event
-    return await Storage.applyReplace(cmd, cfg);
+    return await storage.applyReplace(cmd, cfg);
   } catch (e: unknown) {
     return error(e instanceof Error ? e.message : String(e), cmd.path);
   }
@@ -125,7 +125,7 @@ async function handleInsert(cmd: InsertUse, cfg: CliConfig): Promise<FileEdited 
   }
   try {
     // Delegate directly to storage which handles backup and returns FileEdited event
-    return await Storage.applyInsert(cmd, cfg);
+    return await storage.applyInsert(cmd, cfg);
   } catch (e: unknown) {
     return error(e instanceof Error ? e.message : String(e), cmd.path);
   }
@@ -148,7 +148,7 @@ async function handleCreate(cmd: CreateUse, cfg: CliConfig): Promise<FileEdited 
     // Use storage.writeFile which handles dryRun
     // Note: storage.writeFile doesn't create backups for new files, which is correct.
     const lines = cmd.content.split(/\r?\n/);
-    const lineCount = await Storage.writeFile(cmd.path, cmd.content, cfg);
+    const lineCount = await storage.writeFile(cmd.path, cmd.content, cfg);
     // Return a FileEdited event structure, as creation is a form of edit (0 lines removed, N added)
     return {
       type: 'FileEdited',
@@ -198,8 +198,9 @@ export async function handleToolUse(toolUse: ToolUse, cfg: CliConfig): Promise<D
   log.info({ toolUseId: cmd.id, kind: cmd.kind }, 'Dispatching tool use command');
   
   // Add validation for base fields required by all commands
-  if (!cmd.kind || !cmd.path) {
-    const errorEvent = error(`Invalid command received: missing kind or path. ID: ${cmd.id}`);
+  // Only check for empty path, since cmd.kind is a string literal union and cannot be ''
+  if (cmd.path === '') {
+    const errorEvent = error(`Invalid command received: missing path. ID: ${cmd.id}`);
     // Emit the error event through the bus
     emitDomainEvent(errorEvent);
     return errorEvent;

@@ -12,7 +12,7 @@ import { formatReport } from './reporter.mjs';
 // Constants for running dependency-cruiser
 const DEP_CRUISE_CMD = 'npx';
 const DEP_CRUISE_ARGS = ['depcruise', 'src', '--config', 'dependency-cruiser.cjs', '--output-type', 'json'];
-
+// No magic numbers: all constants above are descriptive and justified for CLI args
 /**
  * Processes a single dependency and adds violations to the list.
  * @param {object} dep - The dependency object from dependency-cruiser.

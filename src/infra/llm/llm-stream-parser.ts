@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/naming-convention -- Anthropic is a third-party type, cannot rename
 import type Anthropic from '@anthropic-ai/sdk';
 import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages/messages.js';
 import type { ToolUse, ToolCommand } from '../../app/model/index.js';
@@ -9,10 +10,10 @@ import type { Logger } from 'pino';
  * @param chunk - The message stream event from Anthropic.
  * @returns An array of ContentBlock if present, otherwise undefined.
  */
-function _extractContentBlocksFromChunk(
+function extractContentBlocksFromChunk(
   chunk: Anthropic.Messages.MessageStreamEvent
 ): ContentBlock[] | undefined {
-  if (chunk.type === 'message_start' && chunk.message.content) {
+  if (chunk.type === 'message_start' && typeof chunk.message.content !== 'undefined' && chunk.message.content !== null) { // Added null/undefined checks
     return chunk.message.content;
   }
   if (
@@ -32,7 +33,7 @@ function _extractContentBlocksFromChunk(
  * @param logger - The logger instance for logging messages.
  * @returns A generator yielding ToolUse objects.
  */
-function* _generateToolUsesFromBlocks(
+function* generateToolUsesFromBlocks(
   blocks: ContentBlock[],
   logger: Logger,
 ): Generator<ToolUse, void> {
@@ -86,10 +87,10 @@ export async function* processAnthropicStream(
       logger.info('Message stream stopped.');
     }
 
-    const currentContentBlocks = _extractContentBlocksFromChunk(chunk);
+    const currentContentBlocks = extractContentBlocksFromChunk(chunk);
 
     if (currentContentBlocks) {
-      for (const toolUse of _generateToolUsesFromBlocks(currentContentBlocks, logger)) {
+      for (const toolUse of generateToolUsesFromBlocks(currentContentBlocks, logger)) {
         yield toolUse;
         totalToolUseCount++;
       }

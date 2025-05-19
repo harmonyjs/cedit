@@ -14,7 +14,7 @@ import type { ResourceManager } from './services/resource-manager.js';
  * @param err The error object.
  * @param log Optional logger instance for structured logging.
  */
-function _handleCriticalError(err: unknown, log?: Logger): void {
+function handleCriticalError(err: unknown, log?: Logger): void {
   const errorMessage = err instanceof Error ? err.message : String(err);
   // Avoid double logging for spec file path error, as cli-parser now handles its specific error message.
   if (errorMessage !== 'Spec file path is required.' && !errorMessage.startsWith('Missing required argument: spec')) {
@@ -24,7 +24,7 @@ function _handleCriticalError(err: unknown, log?: Logger): void {
 
   if (log) {
     log.error({ error: errorMessage, stack: errorStack }, 'Critical CLI execution failed');
-  } else if (errorStack && errorMessage !== 'Spec file path is required.' && !errorMessage.startsWith('Missing required argument: spec')) {
+  } else if (errorStack !== undefined && errorMessage !== 'Spec file path is required.' && !errorMessage.startsWith('Missing required argument: spec')) {
     console.error(chalk.dim(errorStack));
   }
 }
@@ -53,7 +53,7 @@ export async function runCli(
   } catch (err: unknown) {
     // _handleCriticalError is called if orchestrateExecution itself throws an unexpected error
     // or if errors occur before the logger is initialized within orchestrateExecution.
-    _handleCriticalError(err, overallLog);
+    handleCriticalError(err, overallLog);
     return 1;
   } finally {
     if (overallResourceManager) {

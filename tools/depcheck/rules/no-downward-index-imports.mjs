@@ -25,11 +25,13 @@ export const meta = {
  * @returns {boolean} - true if this is a downward index import
  */
 function isDownwardIndexImport(fromPath, toPath) {
+  // Magic number: checks for index.ts/js at the end of the path
   if (!new RegExp(`${path.sep}index\\.(ts|js)$`).test(toPath)) {
     return false;
   }
   const fromDirs = path.dirname(fromPath).split(path.sep);
   const toDirs = path.dirname(toPath).split(path.sep);
+  // fromDirs.length > toDirs.length: parent importing from child
   return (
     fromDirs.length > toDirs.length &&
     fromDirs.slice(0, toDirs.length).every((p, i) => p === toDirs[i])

@@ -3,10 +3,10 @@
  */
 import chalk from 'chalk';
 import type { Logger } from 'pino';
-import type { bus} from '../../../app/bus/index.js';
-import { BusEventType, type FinishSummaryEvent, type FinishAbortEvent } from '../../../app/bus/index.js'; // Adjusted path
+import { BUS_EVENT_TYPE, type FinishSummaryEvent, type FinishAbortEvent, type bus } from '../../../app/bus/index.js';
 
-export class CompletionHandler { // Renamed class
+
+export class CompletionHandler {
   private readonly log: Logger;
   private readonly busInstance: typeof bus;
   private summaryHandler?: (payload: FinishSummaryEvent) => void;
@@ -33,8 +33,12 @@ export class CompletionHandler { // Renamed class
     this.isListening = true;
     this.log.debug('Awaiting application completion (summary or abort).');
 
-    return new Promise<number>((resolve) => {
-      this.summaryHandler = (payload: FinishSummaryEvent) => {
+    // Exit codes for process completion
+    const EXIT_CODE_SUCCESS = 0; // Standard POSIX success
+    const EXIT_CODE_FAILURE = 1; // Standard POSIX failure
+
+    return new Promise<number>((resolve): void => {
+      this.summaryHandler = (payload: FinishSummaryEvent): void => {
         const { totalEdits, filesEdited, filesCreated } = payload.stats;
         const { added, removed, changed } = totalEdits;
 
@@ -45,25 +49,34 @@ export class CompletionHandler { // Renamed class
           )} removed, ${chalk.yellowBright(`~${changed}`)} changed.`,
         );
         console.log(`${chalk.blue('ℹ Files:')} ${filesEdited} edited, ${filesCreated} created.`);
-        console.log(`${chalk.gray('⏱ Duration:')} ${(payload.duration / 1000).toFixed(2)}s`);
+        /**
+         * Number of milliseconds in one second.
+         * Used to convert duration from ms to seconds for display.
+         */
+        const MS_PER_SECOND = 1000;
+        /**
+         * Number of decimal places to show for duration seconds.
+         */
+        const DURATION_DECIMALS = 2;
+        console.log(`${chalk.gray('⏱ Duration:')} ${(payload.duration / MS_PER_SECOND).toFixed(DURATION_DECIMALS)}s`);
         console.log(chalk.green('✨ All done! ✨'));
         
         this.stopListening();
-        resolve(0); // Success
+        resolve(EXIT_CODE_SUCCESS); // Success
       };
 
-      this.abortHandler = (payload: FinishAbortEvent) => {
+      this.abortHandler = (payload: FinishAbortEvent): void => {
         // Log specific message if it's not a core process failure (which is logged elsewhere by other handlers)
         if (!payload.reason.startsWith('Core process failed:')) {
           // Log to console, not logger, as this is user-facing
           console.log(chalk.red(`\n✖ Aborted: ${payload.reason}`));
         }
         this.stopListening();
-        resolve(1); // Failure/Abort
+        resolve(EXIT_CODE_FAILURE); // Failure/Abort
       };
 
-      this.busInstance.onceTyped(BusEventType.FINISH_SUMMARY, this.summaryHandler);
-      this.busInstance.onceTyped(BusEventType.FINISH_ABORT, this.abortHandler);
+      this.busInstance.onceTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, this.summaryHandler);
+      this.busInstance.onceTyped(BUS_EVENT_TYPE.FINISH_ABORT, this.abortHandler);
     });
   }
 
@@ -76,11 +89,11 @@ export class CompletionHandler { // Renamed class
     }
     this.log.debug('Stopping completion event listeners.');
     if (this.summaryHandler) {
-      this.busInstance.offTyped(BusEventType.FINISH_SUMMARY, this.summaryHandler);
+      this.busInstance.offTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, this.summaryHandler);
       this.summaryHandler = undefined;
     }
     if (this.abortHandler) {
-      this.busInstance.offTyped(BusEventType.FINISH_ABORT, this.abortHandler);
+      this.busInstance.offTyped(BUS_EVENT_TYPE.FINISH_ABORT, this.abortHandler);
       this.abortHandler = undefined;
     }
     this.isListening = false;

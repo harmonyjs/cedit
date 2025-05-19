@@ -245,7 +245,7 @@ export interface BackupConfig {
   dir: string;
   
   /** Number of days to keep backups (0 = keep forever) */
-  keep_for_days: number;
+  keepForDays: number;
 }
 
 /**
@@ -253,10 +253,10 @@ export interface BackupConfig {
  */
 export interface DefaultConfig {
   /** Default dry run setting */
-  dry_run: boolean;
+  dryRun: boolean;
   
   /** Default maximum tokens */
-  max_tokens: number;
+  maxTokens: number;
 
   /** Claude model to use */
   model: string;
@@ -265,7 +265,7 @@ export interface DefaultConfig {
   retries: number;
   
   /** Milliseconds to sleep between API requests */
-  sleep_between_requests_ms: number;
+  sleepBetweenRequestsMs: number;
 }
 
 /**
@@ -273,7 +273,7 @@ export interface DefaultConfig {
  */
 export interface CliConfig {
   /** Anthropic API key */
-  anthropic_api_key: string;
+  anthropicApiKey: string;
   
   /** Claude model to use */
   model: string;
@@ -282,7 +282,7 @@ export interface CliConfig {
   retries: number;
   
   /** Milliseconds to sleep between API requests */
-  sleep_between_requests_ms: number;
+  sleepBetweenRequestsMs: number;
   
   /** Log configuration */
   log: LogConfig;
@@ -294,10 +294,10 @@ export interface CliConfig {
   defaults: DefaultConfig;
   
   /** Whether to run in dry run mode */
-  dry_run?: boolean;
+  dryRun?: boolean;
   
   /** Maximum tokens for the request */
-  max_tokens?: number;
+  maxTokens?: number;
 
   /** Variable overrides from the command line */
   varsOverride: Record<string, string>;

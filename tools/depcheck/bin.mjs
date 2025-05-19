@@ -31,9 +31,12 @@
 import { runChecks } from './index.mjs';
 
 // Run checks
+// Magic numbers 1 and 0: Standard POSIX exit codes for error/success
+const EXIT_CODE_SUCCESS = 0;
+const EXIT_CODE_FAILURE = 1;
 runChecks().then((hasViolations) => {
-  process.exit(hasViolations ? 1 : 0);
+  process.exit(hasViolations ? EXIT_CODE_FAILURE : EXIT_CODE_SUCCESS);
 }).catch((err) => {
   console.error('Critical error during checks:', err);
-  process.exit(1);
+  process.exit(EXIT_CODE_FAILURE);
 });

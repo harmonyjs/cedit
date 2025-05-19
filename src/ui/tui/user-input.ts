@@ -6,7 +6,7 @@ export async function promptSpecPath(): Promise<string | null> {
   const specPath = await text({
     message: 'Spec file to run?',
     validate: (value) => {
-      if (!value) return 'Please enter a spec file path';
+      if (value === undefined || value === null || value === '') return 'Please enter a spec file path';
       try {
         fsSync.accessSync(value);
         return undefined;
@@ -26,6 +26,8 @@ export async function promptVariables(): Promise<Record<string, string> | null> 
   const variables: Record<string, string> = {};
   let continueVars = true;
   log.step('Override variables (key=value, blank to finish)');
+  // Magic number 2: exactly two parts expected for key=value pairs
+  const KEY_VALUE_PAIR_LENGTH = 2;
   while (continueVars) {
     const varInput = await text({
       message: 'Variable (key=value)',
@@ -35,11 +37,11 @@ export async function promptVariables(): Promise<Record<string, string> | null> 
       cancel('Operation cancelled.');
       return null;
     }
-    if (!varInput) {
+    if (varInput === undefined || varInput === null || varInput === '') {
       continueVars = false;
     } else {
       const parts = (varInput).split('=');
-      if (parts.length === 2) {
+      if (parts.length === KEY_VALUE_PAIR_LENGTH) {
         variables[parts[0].trim()] = parts[1].trim();
       } else {
         log.warn('Invalid format. Use key=value');
@@ -71,9 +73,9 @@ export async function gatherUserInput(): Promise<{
 } | null> {
   intro(chalk.inverse(' cedit interactive CLI '));
   const specPath = await promptSpecPath();
-  if (!specPath) return null;
+  if (specPath === null || specPath === undefined) return null;
   const variables = await promptVariables();
-  if (!variables) return null;
+  if (variables === null || variables === undefined) return null;
   const dryRun = await promptDryRun();
   if (dryRun === null) return null;
   return { specPath, variables, dryRun };

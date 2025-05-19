@@ -38,7 +38,7 @@ export function toAbsoluteSafe(relPath: string): string {
 export async function readFileLines(relPath: string): Promise<string[]> {
   const abs = toAbsoluteSafe(relPath);
   const data = await fs.readFile(abs, 'utf8');
-  if (log) log.info({ relPath }, 'file read');
+  if (typeof log !== 'undefined' && log !== null) log.info({ relPath }, 'file read'); // strict-boolean-expressions
   return data.split(/\r?\n/);
 }
 
@@ -51,17 +51,20 @@ export async function writeFile(
   content: string,
   cfg: CliConfig
 ): Promise<number> {
-  const target = cfg.dry_run
+  const target = (cfg.dryRun ?? false) // Handle nullish case for dryRun
     ? relPath.replace(/(\.[^./]+)$/i, '.updated$1') // add .updated before ext
     : relPath;
   const abs = toAbsoluteSafe(target);
   
   // Ensure directory exists
   const dir = path.dirname(abs);
-  await fs.mkdir(dir, { recursive: true });
+  // Check if dir is not an empty string before creating
+  if (typeof dir === 'string' && dir !== '') {
+    await fs.mkdir(dir, { recursive: true });
+  }
   
   await fs.writeFile(abs, content, 'utf8');
-  if (log) log.info({ target }, 'file written');
+  if (typeof log !== 'undefined' && log !== null) log.info({ target }, 'file written'); // strict-boolean-expressions
   return content.split(/\r?\n/).length;
 }
 
@@ -69,10 +72,13 @@ export async function makeBackup(relPath: string, cfg: CliConfig): Promise<strin
   const abs = toAbsoluteSafe(relPath);
   const stamp = Date.now();
   const destDir = path.join(cfg.backup.dir, path.dirname(relPath));
-  await fs.mkdir(destDir, { recursive: true });
+  // Check if destDir is not an empty string before creating
+  if (typeof destDir === 'string' && destDir !== '') {
+    await fs.mkdir(destDir, { recursive: true });
+  }
   const dest = path.join(destDir, path.basename(relPath) + '.' + stamp + '.bak');
   await fs.copyFile(abs, dest);
-  if (log) log.info({ dest }, 'backup created');
+  if (typeof log !== 'undefined' && log !== null) log.info({ dest }, 'backup created'); // strict-boolean-expressions
   return dest;
 }
 
@@ -90,7 +96,8 @@ export function lineStats(oldLines: string[], newLines: string[]): EditStats {
   return { added, removed, changed } as const;
 }
 
-export async function applyReplace(cmd: ReplaceUse, cfg: CliConfig) {
+// explicit-function-return-type / explicit-module-boundary-types
+export async function applyReplace(cmd: ReplaceUse, cfg: CliConfig): Promise<Readonly<{ type: 'FileEdited'; path: string; lines: number; stats: EditStats }>> {
   const oldLines = await readFileLines(cmd.path);
   await makeBackup(cmd.path, cfg);
   const before = oldLines.slice(0, cmd.lineFrom);
@@ -107,7 +114,8 @@ export async function applyReplace(cmd: ReplaceUse, cfg: CliConfig) {
   } as const;
 }
 
-export async function applyInsert(cmd: InsertUse, cfg: CliConfig) {
+// explicit-function-return-type / explicit-module-boundary-types
+export async function applyInsert(cmd: InsertUse, cfg: CliConfig): Promise<Readonly<{ type: 'FileEdited'; path: string; lines: number; stats: EditStats }>> {
   const oldLines = await readFileLines(cmd.path);
   await makeBackup(cmd.path, cfg);
   const nextLines = [...oldLines];

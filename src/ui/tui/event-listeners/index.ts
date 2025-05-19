@@ -1,14 +1,13 @@
 import type { DomainEvent } from '../../../app/model/index.js';
 import { log, note, outro, cancel } from '@clack/prompts';
 import chalk from 'chalk';
-import type {
-  bus as BusInstance} from '../../../app/bus/index.js';
-import { // Use an alias for the instance if needed, or use its type
-  BusEventType,
-  BusNamespace,
-  type FinishAbortEvent as FinishAbortedPayload, // Alias to match usage
-  type FinishSummaryEvent as FinishSummaryPayload, // Alias to match usage
-  type InitConfigEvent
+import {
+  BUS_EVENT_TYPE,
+  BUS_NAMESPACE,
+  type FinishAbortEvent as FinishAbortedPayload,
+  type FinishSummaryEvent as FinishSummaryPayload,
+  type InitConfigEvent,
+  type bus as BusInstance
 } from '../../../app/bus/index.js';
 
 /**
@@ -54,7 +53,7 @@ export function injectTuiDeps(deps: {
   getVersion: () => string;
   fs: typeof import('node:fs/promises');
   fsSync: typeof import('node:fs');
-}) {
+}): void {
   loggerInstance = deps.logger;
   activeSpinner = deps.activeSpinner;
   dispatchDomainEventFn = deps.dispatchDomainEvent;
@@ -66,7 +65,8 @@ export function injectTuiDeps(deps: {
 
 export function setupActualEventListeners(bus: typeof BusInstance): void {
   // Listen for init events
-  bus.onTyped(BusEventType.INIT_CONFIG, (payload: InitConfigEvent) => {
+   
+  bus.onTyped(BUS_EVENT_TYPE.INIT_CONFIG, (payload: InitConfigEvent) => {
     handleInitConfigEventFn(payload, {
       logger: loggerInstance,
       getVersion: getVersionInstance,
@@ -74,7 +74,7 @@ export function setupActualEventListeners(bus: typeof BusInstance): void {
       fsSync: fsSyncInstance
     }).catch((error: unknown) => {
       loggerInstance.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in handleInitConfigEvent');
-      bus.emitTyped(BusEventType.FINISH_ABORT, {
+      bus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, {
         timestamp: Date.now(),
         reason: 'Error during TUI initialization'
       });
@@ -85,17 +85,11 @@ export function setupActualEventListeners(bus: typeof BusInstance): void {
   });
 
   // Listen for domain events
-  bus.onNamespace(BusNamespace.DOMAIN, (busEventType, payload) => {
+   
+  bus.onNamespace(BUS_NAMESPACE.DOMAIN, (busEventType, payload) => {
     if (!process.stdout.isTTY) return;
-    if (
-      payload &&
-      typeof payload === 'object' &&
-      'event' in payload &&
-      (payload as { event: unknown }).event &&
-      typeof (payload as { event: unknown }).event === 'object' &&
-      (payload as { event: { type?: unknown } }).event &&
-      'type' in (payload as { event: { type?: unknown } }).event
-    ) {
+    
+    if (isValidDomainEvent(payload)) {
       const domainEvent = (payload as { event: DomainEvent }).event;
       dispatchDomainEventFn(String(busEventType), domainEvent);
     } else {
@@ -107,11 +101,13 @@ export function setupActualEventListeners(bus: typeof BusInstance): void {
   });
 
   // Listen for finish events
-  bus.onTyped(BusEventType.FINISH_SUMMARY, (payload: FinishSummaryPayload) => {
+   
+  bus.onTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, (payload: FinishSummaryPayload) => {
     handleFinishSummaryListener(payload);
   });
 
-  bus.onTyped(BusEventType.FINISH_ABORT, (payload: FinishAbortedPayload) => {
+   
+  bus.onTyped(BUS_EVENT_TYPE.FINISH_ABORT, (payload: FinishAbortedPayload) => {
     handleFinishAbortListener(payload);
   });
 }
@@ -128,7 +124,10 @@ export function handleFinishSummaryListener(payload: FinishSummaryPayload): void
   log.step('Summary:');
   log.info(`Files: ${chalk.cyan(filesEdited)} edited, ${chalk.cyan(filesCreated)} created, ${chalk.cyan(backupsCreated)} backups`);
   log.info(`Changes: ${chalk.green(`+${added}`)} added, ${chalk.red(`-${removed}`)} removed, ${chalk.yellow(`~${changed}`)} changed`);
-  log.info(`Duration: ${chalk.gray(`${(duration / 1000).toFixed(2)}s`)}`);
+  // Magic number 1000: ms to seconds conversion; 2: fixed decimal places for display
+  const MS_PER_SECOND = 1000;
+  const SUMMARY_DECIMAL_PLACES = 2;
+  log.info(`Duration: ${chalk.gray(`${(duration / MS_PER_SECOND).toFixed(SUMMARY_DECIMAL_PLACES)}s`)}`);
   if (filesEdited > 0 || filesCreated > 0) {
     note(
       `Tip: open files above to review; rerun with --dry-run anytime`,
@@ -147,8 +146,24 @@ export function handleFinishAbortListener(payload: FinishAbortedPayload): void {
     // loggerInstance.error is not a function, assuming log.error from @clack/prompts
     log.error(`Aborted: ${chalk.red(payload.reason)}`);
   }
-  if (payload.code) {
+  if (payload.code !== undefined && payload.code !== null && payload.code !== '') {
     log.info(`Code: ${chalk.gray(payload.code)}`);
   }
   outro(chalk.red('Operation aborted'));
+}
+
+/**
+ * Validates if the payload contains a valid domain event structure.
+ */
+function isValidDomainEvent(payload: unknown): boolean {
+  return (
+    payload !== null &&
+    payload !== undefined &&
+    typeof payload === 'object' &&
+    'event' in payload &&
+    payload.event !== null &&
+    payload.event !== undefined &&
+    typeof payload.event === 'object' &&
+    'type' in payload.event
+  );
 }

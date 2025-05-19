@@ -3,7 +3,7 @@
  */
 import chalk from 'chalk';
 import type { CliConfig } from '../../../app/model/index.js'; // Adjusted path
-import { bus, BusEventType } from '../../../app/bus/index.js'; // Adjusted path
+import { bus, BUS_EVENT_TYPE } from '../../../app/bus/index.js'; // Adjusted path
 import { handleConfirmation } from '../handlers/confirmation-handler.js'; // Adjusted path
 import { startProcessing } from './lifecycle.js'; // Adjusted path
 import { performInitialSetup } from './setup.js'; // Adjusted path
@@ -16,7 +16,7 @@ import { CompletionHandler } from '../handlers/completion-handler.js'; // Adjust
 /**
  * Handles the user confirmation step.
  */
-async function _handleUserConfirmation(
+async function handleUserConfirmation(
   flags: CliFlags,
   log: Logger,
 ): Promise<boolean> {
@@ -28,7 +28,7 @@ async function _handleUserConfirmation(
 /**
  * Initializes and starts progress tracking.
  */
-function _initializeAndStartProgressTracking(
+function initializeAndStartProgressTracking(
   progressMonitor: ProgressMonitor,
   specPath: string,
 ): void {
@@ -39,7 +39,7 @@ function _initializeAndStartProgressTracking(
 /**
  * Initializes the ResourceManager, ProgressMonitor, CompletionHandler and emits the INIT_CONFIG event.
  */
-function _initializeServicesAndEmitConfig(
+function initializeServicesAndEmitConfig(
   log: Logger,
   cliCfg: CliConfig,
 ): {
@@ -52,7 +52,7 @@ function _initializeServicesAndEmitConfig(
   const completionHandler = new CompletionHandler(bus, log);
 
   log.info({ config: cliCfg }, 'Effective configuration assembled');
-  bus.emitTyped(BusEventType.INIT_CONFIG, { timestamp: Date.now(), config: cliCfg });
+  bus.emitTyped(BUS_EVENT_TYPE.INIT_CONFIG, { timestamp: Date.now(), config: cliCfg });
   return { resourceManager, progressMonitor, completionHandler };
 }
 
@@ -74,14 +74,14 @@ async function executeMainProcess({
   progressMonitor: ProgressMonitor;
   completionHandler: CompletionHandler;
 }): Promise<{ exitCode: number }> {
-  const confirmed = await _handleUserConfirmation(flags, log);
+  const confirmed = await handleUserConfirmation(flags, log);
   if (!confirmed) {
     progressMonitor.stop();
     completionHandler.stopListening();
     return { exitCode: 0 }; // User cancelled
   }
 
-  _initializeAndStartProgressTracking(progressMonitor, flags.spec);
+  initializeAndStartProgressTracking(progressMonitor, flags.spec);
   
   startProcessing({
     spec: flags.spec,
@@ -111,7 +111,7 @@ export async function orchestrateExecution( // Renamed function
 
   // 2. Initialize Services (Resource Manager, Progress Monitor, Completion Handler) and Emit Config
   const { resourceManager, progressMonitor, completionHandler } = 
-    _initializeServicesAndEmitConfig(log, cliCfg);
+    initializeServicesAndEmitConfig(log, cliCfg);
 
   // 3. Main Process Execution
   const { exitCode } = await executeMainProcess({

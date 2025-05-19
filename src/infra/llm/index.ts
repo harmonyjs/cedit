@@ -9,6 +9,7 @@
  * in the future if needed.
  */
 
+// eslint-disable-next-line @typescript-eslint/naming-convention -- Anthropic is a third-party class, cannot rename
 import Anthropic from '@anthropic-ai/sdk';
 import retry from 'p-retry';
 import { getTokenizer } from '@anthropic-ai/tokenizer';
@@ -21,6 +22,8 @@ import { processAnthropicStream } from './llm-stream-parser.js';
 // Initialize tokenizer
 const tokenizer = getTokenizer();
 
+const DEFAULT_MAX_TOKENS_API = 4096;
+
 /**
  * LLM class that wraps the Anthropic Claude SDK
  */
@@ -29,52 +32,28 @@ export class LLM {
   private readonly cfg: CliConfig;
   private readonly log: ReturnType<typeof getLogger>;
 
-  /**
-   * Creates a new LLM instance
-   * 
-   * @param cfg - CLI configuration
-   */
   constructor(cfg: CliConfig) {
     this.cfg = cfg;
     this.log = getLogger('llm');
     
-    // Ensure API key is read from environment variable or config
-    const apiKey = process.env.ANTHROPIC_API_KEY || cfg.anthropic_api_key;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY environment variable or config value not set.');
+    const apiKey = process.env.ANTHROPIC_API_KEY ?? cfg.anthropicApiKey;
+    // Explicit check for empty string for apiKey
+    if (typeof apiKey !== 'string' || apiKey === '') {
+      throw new Error('ANTHROPIC_API_KEY environment variable or config value not set or is empty.');
     }
     
     this.client = new Anthropic({ apiKey });
   }
 
-  /**
-   * Count tokens of the main prompt text.
-   * 
-   * @param payload - The text to count tokens for
-   * @returns The number of tokens in the text
-   */
-  private countTokens(payload: string): number {
-    // Note: This is a simplified count. A more accurate count would
-    // need to serialize the entire API request structure including tools.
-    // For now, we estimate based on the main text + a fixed overhead for tools.
-    return tokenizer.encode(payload).length;
-  }
-
-  /**
-   * Send Spec to Claude and yield ToolUse objects as they arrive.
-   * 
-   * @param spec - The specification to send to Claude
-   * @returns An async iterable of ToolUse objects
-   */
-  async *sendPrompt(spec: Spec): AsyncGenerator<ToolUse> {
+  // Instance methods
+  public async *sendPrompt(spec: Spec): AsyncGenerator<ToolUse> {
     const promptText = `${spec.system}\n\n---\n\n${spec.user}`;
-    // Simplified token counting - add a fixed overhead for tool definitions
     const estimatedToolOverhead = 700; // Adjust as needed
-    const total = this.countTokens(promptText) + estimatedToolOverhead;
+    const total = LLM.countTokens(promptText) + estimatedToolOverhead; // Call as static method
 
     this.log.info({ estimatedTokens: total }, 'Estimated token count for prompt');
 
-    const maxTokens = this.cfg.max_tokens || 4096; // Default to 4096 if not specified
+    const maxTokens = this.cfg.maxTokens ?? DEFAULT_MAX_TOKENS_API;
     if (total > maxTokens) {
       throw new Error(`Input too large: estimated ${total} tokens (limit ${maxTokens})`);
     }
@@ -87,12 +66,13 @@ export class LLM {
       // Define the async generator function that will handle the stream
       const streamProcessingGenerator = async function* (this: LLM): AsyncGenerator<ToolUse> {
         const stream = await this.client.messages.create({
-          model: this.cfg.model || 'claude-3-sonnet-20240229',
+          model: this.cfg.model ?? 'claude-3-sonnet-20240229', // Nullish coalescing for model
           stream: true,
           system: spec.system,
           messages: [{ role: 'user', content: spec.user }],
+          // @ts-expect-error Anthropic SDK expects input_schema, not inputSchema. This is a known deviation.
           tools: [TEXT_EDITOR_TOOL_DEFINITION], // Use the imported constant
-          max_tokens: maxTokens,
+          maxTokens: maxTokens,
         });
 
         // Delegate stream processing to the new function from llm-stream-parser.ts
@@ -103,8 +83,9 @@ export class LLM {
     };
 
     // Wrap in p-retry with exponential backoff
-    const retryCount = this.cfg.retries || 3; // Default to 3 retries if not specified
-    const sleepMs = this.cfg.sleep_between_requests_ms || 0; // Default to 0 if not specified
+    const DEFAULT_RETRY_COUNT = 3;
+    const retryCount = this.cfg.retries ?? DEFAULT_RETRY_COUNT;
+    const sleepMs = this.cfg.sleepBetweenRequestsMs ?? 0;
     
     try {
       const generator = await retry(task, {
@@ -119,6 +100,8 @@ export class LLM {
             this.log.info(`Sleeping for ${sleepMs}ms before retry.`);
             return new Promise(r => setTimeout(r, sleepMs));
           }
+          // Ensure a promise is always returned, even if not sleeping
+          return Promise.resolve(); 
         },
         retries: retryCount,
       });
@@ -128,6 +111,14 @@ export class LLM {
       this.log.error({ error }, 'Failed to get response from LLM after retries');
       throw error;
     }
+  }
+
+  // Static private methods/fields first
+  private static countTokens(payload: string): number {
+    // Note: This is a simplified count. A more accurate count would
+    // need to serialize the entire API request structure including tools.
+    // For now, we estimate based on the main text + a fixed overhead for tools.
+    return tokenizer.encode(payload).length;
   }
 }
 

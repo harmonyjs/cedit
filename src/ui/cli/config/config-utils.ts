@@ -53,35 +53,59 @@ export class ConfigBuilder {
     this.fileCfgFull = fileCfgFull;
   }
 
-  private _getValueFromCli<T_Section extends object, K extends keyof T_Section>(
-    metaValue: ConfigOptionValue<T_Section, K>,
-  ): T_Section[K] | undefined {
-    if (metaValue.flagKey && this.flags[metaValue.flagKey] !== undefined) {
+  public buildSection<TSection extends object>(
+    sectionDefaults: Readonly<TSection>,
+    metadata: ConfigMetadata<TSection>
+  ): TSection {
+    const result: Partial<TSection> = {};
+    for (const metaEntry of metadata) {
+      const key = metaEntry.key;
+      if (metaEntry.isNested === true) { // strict-boolean-expressions
+        const metaNested = metaEntry;
+        const nestedSectionHardcodedDefaults = sectionDefaults[key];
+        // Ensure nestedSectionHardcodedDefaults is an object and not null
+        if (typeof nestedSectionHardcodedDefaults !== 'object' || nestedSectionHardcodedDefaults === null) { // strict-boolean-expressions
+          console.warn(chalk.yellow(`Warning: Default value for nested key '${String(key)}' is not an object in hardcoded defaults. Skipping.`));
+          // Ensure sectionDefaults[key] is not undefined before assigning empty object
+          if (typeof sectionDefaults[key] !== 'undefined') { // strict-boolean-expressions
+            result[key] = {} as TSection[typeof key];
+          }
+          continue;
+        }
+        result[key] = this.buildSection(
+          nestedSectionHardcodedDefaults as Readonly<Extract<TSection[typeof key], object>>,
+          metaNested.nestedMetadata as ConfigMetadata<Extract<TSection[typeof key], object>>
+        );
+      } else {
+        const metaValue = metaEntry;
+        result[key] = this.resolveSingleValue(
+          metaValue,
+          sectionDefaults[key]
+        );
+      }
+    }
+    return result as TSection;
+  }
+
+  private getValueFromCli<TSection extends object, K extends keyof TSection>(
+    metaValue: ConfigOptionValue<TSection, K>,
+  ): TSection[K] | undefined {
+    // Ensure flagKey exists and is a valid key of CliFlags before accessing this.flags
+    if (typeof metaValue.flagKey === 'string' && metaValue.flagKey in this.flags && typeof this.flags[metaValue.flagKey] !== 'undefined') { // strict-boolean-expressions
       return metaValue.parser(this.flags[metaValue.flagKey]);
     }
     return undefined;
   }
 
-  private _getValueFromEnv<T_Section extends object, K extends keyof T_Section>(
-    metaValue: ConfigOptionValue<T_Section, K>
-  ): T_Section[K] | undefined {
-    if (metaValue.envVarKey) {
-      const envValue = process.env[metaValue.envVarKey];
-      if (envValue !== undefined) {
-        return metaValue.parser(envValue);
-      }
-    }
-    return undefined;
-  }
-
-  private _getValueFromFile<T_Section extends object, K extends keyof T_Section>(
-    metaValue: ConfigOptionValue<T_Section, K>,
+  private getValueFromFile<TSection extends object, K extends keyof TSection>(
+    metaValue: ConfigOptionValue<TSection, K>,
     useDefaultPath: boolean
-  ): T_Section[K] | undefined {
+  ): TSection[K] | undefined {
     const pathConfig = useDefaultPath ? metaValue.fileDefaultPath : metaValue.fileConfigPath;
-    if (!pathConfig) return undefined;
+    if (typeof pathConfig === 'undefined') return undefined; // strict-boolean-expressions
 
-    if (useDefaultPath && metaValue.isDefaultsSectionProperty) return undefined;
+    // Ensure isDefaultsSectionProperty is explicitly checked for boolean value
+    if (useDefaultPath && (metaValue.isDefaultsSectionProperty === true)) return undefined; // strict-boolean-expressions
 
     const valFromFile = typeof pathConfig === 'function'
       ? pathConfig(this.fileCfgFull)
@@ -93,56 +117,37 @@ export class ConfigBuilder {
     return undefined;
   }
 
-  private _resolveSingleValue<T_Section extends object, K extends keyof T_Section>(
-    metaValue: ConfigOptionValue<T_Section, K>,
-    hardcodedDefaultForKey: T_Section[K] | undefined
-  ): T_Section[K] | undefined {
-    let resolvedValue: T_Section[K] | undefined;
+  private resolveSingleValue<TSection extends object, K extends keyof TSection>(
+    metaValue: ConfigOptionValue<TSection, K>,
+    hardcodedDefaultForKey: TSection[K] | undefined
+  ): TSection[K] | undefined {
+    let resolvedValue: TSection[K] | undefined;
 
-    resolvedValue = this._getValueFromCli(metaValue);
+    resolvedValue = this.getValueFromCli(metaValue);
     if (resolvedValue !== undefined) return resolvedValue;
 
-    resolvedValue = this._getValueFromEnv(metaValue);
+    resolvedValue = ConfigBuilder.getValueFromEnv(metaValue);
     if (resolvedValue !== undefined) return resolvedValue;
 
-    resolvedValue = this._getValueFromFile(metaValue, false);
+    resolvedValue = this.getValueFromFile(metaValue, false);
     if (resolvedValue !== undefined) return resolvedValue;
 
-    resolvedValue = this._getValueFromFile(metaValue, true);
+    resolvedValue = this.getValueFromFile(metaValue, true);
     if (resolvedValue !== undefined) return resolvedValue;
 
     return hardcodedDefaultForKey;
   }
 
-  public buildSection<T_Section extends object>(
-    sectionDefaults: Readonly<T_Section>,
-    metadata: ConfigMetadata<T_Section>
-  ): T_Section {
-    const result: Partial<T_Section> = {};
-    for (const metaEntry of metadata) {
-      const key = metaEntry.key;
-      if (metaEntry.isNested) {
-        const metaNested = metaEntry;
-        const nestedSectionHardcodedDefaults = sectionDefaults[key];
-        if (typeof nestedSectionHardcodedDefaults !== 'object' || nestedSectionHardcodedDefaults === null) {
-          console.warn(chalk.yellow(`Warning: Default value for nested key '${String(key)}' is not an object in hardcoded defaults. Skipping.`));
-          if (typeof sectionDefaults[key] !== 'undefined') {
-            result[key] = {} as T_Section[typeof key];
-          }
-          continue;
-        }
-        result[key] = this.buildSection(
-          nestedSectionHardcodedDefaults as Readonly<Extract<T_Section[typeof key], object>>,
-          metaNested.nestedMetadata as ConfigMetadata<Extract<T_Section[typeof key], object>>
-        );
-      } else {
-        const metaValue = metaEntry;
-        result[key] = this._resolveSingleValue(
-          metaValue,
-          sectionDefaults[key]
-        );
+  // This method can be static as it doesn't use 'this'
+  private static getValueFromEnv<TSection extends object, K extends keyof TSection>(
+    metaValue: ConfigOptionValue<TSection, K>
+  ): TSection[K] | undefined {
+    if (typeof metaValue.envVarKey === 'string' && metaValue.envVarKey !== '') { // strict-boolean-expressions
+      const envValue = process.env[metaValue.envVarKey];
+      if (typeof envValue !== 'undefined') { // strict-boolean-expressions
+        return metaValue.parser(envValue);
       }
     }
-    return result as T_Section;
+    return undefined;
   }
 }

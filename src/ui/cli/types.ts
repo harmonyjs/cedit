@@ -1,14 +1,14 @@
 export interface CliFlags {
   spec: string;
-  dry_run: boolean | undefined;
+  dryRun: boolean | undefined;
   var: string[];
-  log_level: string | undefined;
-  log_dir?: string;
-  backup_dir?: string;
-  max_tokens?: number;
+  logLevel: string | undefined;
+  logDir?: string;
+  backupDir?: string;
+  maxTokens?: number;
   model?: string;
   retries?: number;
-  sleep_ms?: number;
+  sleepMs?: number;
   yes: boolean;
 }
 

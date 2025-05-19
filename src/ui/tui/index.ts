@@ -104,9 +104,9 @@ function dispatchDomainEvent(busEventType: string, domainEvent: DomainEvent): vo
 export function isTUIEnvironment(): boolean {
   const isTTY = process.stdout.isTTY;
   const isCI = process.env.CI === 'true' || 
-               !!process.env.GITHUB_ACTIONS || 
-               !!process.env.GITLAB_CI || 
-               !!process.env.JENKINS_URL;
+               (process.env.GITHUB_ACTIONS !== undefined && process.env.GITHUB_ACTIONS !== '') || 
+               (process.env.GITLAB_CI !== undefined && process.env.GITLAB_CI !== '') || 
+               (process.env.JENKINS_URL !== undefined && process.env.JENKINS_URL !== '');
   return isTTY && !isCI;
 }
 
@@ -162,7 +162,7 @@ export async function showConfirmation(message: string): Promise<boolean> {
  * @param message - Initial message for the spinner
  * @returns Spinner instance
  */
-export function createSpinner(message: string) {
+export function createSpinner(message: string): ReturnType<typeof spinner> | null {
   if (!process.stdout.isTTY) return null; // No spinner if not in TTY
   
   // Stop any existing spinner
@@ -241,7 +241,7 @@ export async function showConfigConfirmation(specPath: string, configPath?: stri
   
   intro(`cedit v${getVersion()}`);
   
-  if (configPath) {
+  if (configPath !== undefined && configPath !== null && configPath !== '') {
     log.step('Loaded config');
     log.message(configPath);
   }

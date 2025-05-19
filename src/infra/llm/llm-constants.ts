@@ -11,7 +11,7 @@ export const TEXT_EDITOR_TOOL_DEFINITION = {
   name: 'text_editor_20250124', // Unique name for the tool
   description:
     'Tool for viewing and modifying files. Use commands like view, str_replace, insert, create, undo_edit.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       kind: {
@@ -45,4 +45,4 @@ export const TEXT_EDITOR_TOOL_DEFINITION = {
     },
     required: ['kind', 'path'], // Base requirements for all commands
   },
-} as const;
+};

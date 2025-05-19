@@ -1,8 +1,7 @@
 /**
  * Helper functions for the CLI lifecycle, managing stages from initialization to completion.
  */
-import type { bus} from '../../../app/bus/index.js';
-import { BusEventType } from '../../../app/bus/index.js'; // Adjusted path
+import { BUS_EVENT_TYPE, type bus } from '../../../app/bus/index.js';
 import type { CliConfig } from '../../../app/model/index.js'; // Adjusted path
 import { parseArguments } from './parser.js'; // Adjusted path and function name
 import { loadConfiguration } from '../config/loader.js'; // Adjusted path
@@ -47,7 +46,7 @@ export function startProcessing({
     const stack = err instanceof Error ? err.stack : undefined;
     log.error({ error: message, stack }, 'Unhandled error in runner (runFn)');
     // Emit FINISH_ABORT so that completion can be handled and CLI can exit.
-    eventBus.emitTyped(BusEventType.FINISH_ABORT, {
+    eventBus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, {
       timestamp: Date.now(),
       reason: `Core process failed: ${message}`,
     });

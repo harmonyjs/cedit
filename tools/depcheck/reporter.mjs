@@ -14,6 +14,7 @@ import chalk from 'chalk';
  * @returns {boolean} - true if there are violations
  */
 export function formatReport(violations) {
+  // Magic number 0: zero violations means success
   if (violations.length === 0) {
     console.log(chalk.green('✓ All architecture rules are satisfied!'));
     return false;

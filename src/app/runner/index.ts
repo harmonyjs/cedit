@@ -38,7 +38,7 @@ async function loadSpec(path: string): Promise<Spec> {
   const raw = await fs.readFile(path, 'utf8');
   const doc: unknown = yaml.parse(raw);
   // Add more robust validation based on Spec type definition
-  if (!doc || typeof doc !== 'object' || !('system' in doc) || !('user' in doc) || !('variables' in doc)) {
+  if (doc === null || typeof doc !== 'object' || !('system' in doc) || !('user' in doc) || !('variables' in doc)) { // Added null check
     throw new Error(`Invalid spec file (${path}): missing required fields (system, user, variables)`);
   }
   // Potentially validate attachments array if present
@@ -113,7 +113,7 @@ function interpolate(spec: Spec, cfg: CliConfig): Spec {
   // Check if CLI overrides exist
   type ExtendedCliConfig = CliConfig & { varsOverride?: Record<string, string> };
   const overrides = (cfg as ExtendedCliConfig).varsOverride;
-  if (overrides && typeof overrides === 'object') {
+  if (typeof overrides !== 'undefined' && overrides !== null && typeof overrides === 'object') { // Added null and undefined checks
       getLogger('runner').info({ count: Object.keys(overrides).length }, 'Applying CLI variable overrides');
       Object.assign(vars, overrides);
   }
@@ -141,7 +141,7 @@ function interpolate(spec: Spec, cfg: CliConfig): Spec {
 export async function run(specPath: string, cfg: CliConfig): Promise<void> {
   // Initialize logger here, now that we have config
   const log = getLogger('runner', cfg);
-  log.info({ specPath, dryRun: cfg.dry_run, model: cfg.model }, 'Runner starting execution');
+  log.info({ specPath, dryRun: cfg.dryRun, model: cfg.model }, 'Runner starting execution'); // Corrected cfg.dry_run to cfg.dryRun
 
   // Emit init config event
   emitInitConfig(cfg);
@@ -189,7 +189,7 @@ export async function run(specPath: string, cfg: CliConfig): Promise<void> {
     const errorStack = error instanceof Error ? error.stack : undefined;
     log.error({ error: errorMessage, stack: errorStack }, 'Unhandled error during runner execution');
     // Ensure critical errors during setup (loadSpec, interpolate, createLLM) are captured 
-    const errorEvent = { type: 'ErrorRaised', message: `Runner failed: ${errorMessage}` } as ErrorRaised;
+    const errorEvent: ErrorRaised = { type: 'ErrorRaised', message: `Runner failed: ${errorMessage}` }; // Explicit type
     
     // Emit error event through the bus
     emitDomainEvent(errorEvent);

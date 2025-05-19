@@ -29,9 +29,10 @@ function createRootLogger(config: CliConfig): pino.Logger {
     fs.mkdirSync(config.log.dir, { recursive: true });
   }
   
+  const LOGFILE_DATE_LENGTH = 10; // YYYY-MM-DD
   const logfile = path.join(
     config.log.dir,
-    new Date().toISOString().slice(0, 10) + '.log'
+    new Date().toISOString().slice(0, LOGFILE_DATE_LENGTH) + '.log'
   );
 
   // Check if we're in development mode

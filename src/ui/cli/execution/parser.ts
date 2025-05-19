@@ -13,8 +13,8 @@ import { setupCommander } from './commander-setup.js';
  * @param program Commander program instance for printing help.
  * @throws Error if critical flags are missing.
  */
-function _validateCriticalFlags(flags: CliFlags, program: Command): void {
-  if (!flags.spec) {
+function validateCriticalFlags(flags: CliFlags, program: Command): void {
+  if (flags.spec === '' || flags.spec === undefined) {
     console.error(chalk.red('Error: Spec file path is required.'));
     program.help(); // This is the crucial part that needs the program instance
     throw new Error('Spec file path is required.');
@@ -80,25 +80,25 @@ export async function parseArguments( // Renamed function
     spec: typeof args[0] === 'string' ? args[0] : '', // spec is a required argument by Commander
     // dry_run: Commander sets to true if --dry-run, false if --no-dry-run, undefined otherwise.
     // This matches CliFlags.dry_run: boolean | undefined.
-    dry_run: opts.dryRun,
+    dryRun: opts.dryRun,
     var: opts.var || [], // Commander provides empty array if not set, due to our default []
     // For options with potential defaults or file overrides, we pass them as potentially undefined.
     // Commander passes the string value if provided, or undefined if not (unless a Commander default was set).
-    log_level: opts.logLevel, // Matches CliFlags.log_level: string | undefined
-    log_dir: opts.logDir, // string | undefined
-    backup_dir: opts.backupDir, // string | undefined
+    logLevel: opts.logLevel, // Matches CliFlags.log_level: string | undefined
+    logDir: opts.logDir, // string | undefined
+    backupDir: opts.backupDir, // string | undefined
     // For numeric options, convert NaN from parseInt to undefined.
     // This simplifies downstream logic, which only needs to check for undefined.
-    max_tokens: Number.isNaN(opts.maxTokens) ? undefined : opts.maxTokens,
+    maxTokens: Number.isNaN(opts.maxTokens) ? undefined : opts.maxTokens,
     model: opts.model, // string | undefined
     retries: Number.isNaN(opts.retries) ? undefined : opts.retries, // number | undefined (or NaN)
-    sleep_ms: Number.isNaN(opts.sleepMs) ? undefined : opts.sleepMs, // number | undefined (or NaN)
+    sleepMs: Number.isNaN(opts.sleepMs) ? undefined : opts.sleepMs, // number | undefined (or NaN)
     // yes: Commander sets to true if --yes, undefined otherwise (as we didn't set a default for it in program.option).
-    yes: !!opts.yes, // Coerced to boolean (true if --yes is present, false otherwise). Matches CliFlags.yes: boolean.
+    yes: opts.yes === true, // Explicitly check for boolean true, fix for nullable boolean in conditional
   };
 
   // Perform critical flag validation immediately after parsing and constructing flags
-  _validateCriticalFlags(flags, program);
+  validateCriticalFlags(flags, program);
 
   return { flags, program };
 }

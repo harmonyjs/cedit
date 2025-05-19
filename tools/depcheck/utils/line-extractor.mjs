@@ -14,7 +14,7 @@
  * @returns {number|null} - Line number or null if not found
  */
 export function getImportLine(dep) {
-  // Try via[0].line (most accurate if present)
+  // Magic number 0: first element in via array is the most accurate line number
   if (Array.isArray(dep.via) && dep.via.length > 0 && typeof dep.via[0].line === 'number') {
     return dep.via[0].line;
   }

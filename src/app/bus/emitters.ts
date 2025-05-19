@@ -1,6 +1,6 @@
 import { bus } from './instance.js';
 import {
-  BusEventType,
+  BUS_EVENT_TYPE,
   type BusEventTypeValue,
   type FinishSummaryEvent
 } from './types.js';
@@ -10,7 +10,7 @@ import type { CliConfig, DomainEvent } from '../model/index.js';
  * Helper function to emit an init:config event
  */
 export function emitInitConfig(config: CliConfig): boolean {
-  return bus.emitTyped(BusEventType.INIT_CONFIG, { timestamp: Date.now(), config });
+  return bus.emitTyped(BUS_EVENT_TYPE.INIT_CONFIG, { timestamp: Date.now(), config });
 }
 
 /**
@@ -44,19 +44,19 @@ export function emitDomainEvent(event: DomainEvent): boolean {
 
   switch (event.type) {
     case 'FileViewed':
-      eventType = BusEventType.DOMAIN_FILE_VIEWED;
+      eventType = BUS_EVENT_TYPE.DOMAIN_FILE_VIEWED;
       break;
     case 'FileEdited':
-      eventType = BusEventType.DOMAIN_FILE_EDITED;
+      eventType = BUS_EVENT_TYPE.DOMAIN_FILE_EDITED;
       break;
     case 'FileCreated':
-      eventType = BusEventType.DOMAIN_FILE_CREATED;
+      eventType = BUS_EVENT_TYPE.DOMAIN_FILE_CREATED;
       break;
     case 'BackupCreated':
-      eventType = BusEventType.DOMAIN_BACKUP_CREATED;
+      eventType = BUS_EVENT_TYPE.DOMAIN_BACKUP_CREATED;
       break;
     case 'ErrorRaised':
-      eventType = BusEventType.DOMAIN_ERROR;
+      eventType = BUS_EVENT_TYPE.DOMAIN_ERROR;
       break;
     default:
       handleUnknownDomainEvent(event as unknown);
@@ -73,7 +73,7 @@ export function emitFinishSummary(
   stats: FinishSummaryEvent['stats'],
   duration: number
 ): boolean {
-  return bus.emitTyped(BusEventType.FINISH_SUMMARY, {
+  return bus.emitTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, {
     timestamp: Date.now(),
     stats,
     duration
@@ -84,7 +84,7 @@ export function emitFinishSummary(
  * Helper function to emit a finish:abort event
  */
 export function emitFinishAbort(reason: string, code?: string): boolean {
-  return bus.emitTyped(BusEventType.FINISH_ABORT, {
+  return bus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, {
     timestamp: Date.now(),
     reason,
     code
