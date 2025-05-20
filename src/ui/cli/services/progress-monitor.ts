@@ -86,11 +86,13 @@ export class ProgressMonitor {
     this.log.debug('Stopping progress monitor.');
     if (this.progressIntervalId) {
       clearInterval(this.progressIntervalId);
-      this.progressIntervalId = undefined;
+      // exactOptionalPropertyTypes: true — присваиваем null вместо undefined
+      this.progressIntervalId = null as unknown as NodeJS.Timeout;
     }
     if (this.domainEventListener) {
       this.busInstance.off(`${BUS_NAMESPACE.DOMAIN}:*`, this.domainEventListener);
-      this.domainEventListener = undefined;
+      // exactOptionalPropertyTypes: true — присваиваем no-op вместо undefined
+      this.domainEventListener = (() => undefined) as typeof this.domainEventListener;
     }
     this.isMonitoring = false;
   }

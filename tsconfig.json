@@ -1,13 +1,61 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "module": "es2020",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    /* ╔═══════════════╗
+       ║ Цель и модули ║
+       ╚═══════════════╝ */
+    "target": "ES2024",
+    "module": "node18",
+    "lib": ["ES2024"],
+    "moduleDetection": "force",
+
+    /* ╔══════════════════════════════════════╗
+       ║ Полный пакет строгих проверок        ║
+       ╚══════════════════════════════════════╝ */
     "strict": true,
-    "skipLibCheck": true,
-    "outDir": "dist"
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "useUnknownInCatchVariables": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* ╔═══════════════════════════╗
+       ║ Чистота кода и dead-code  ║
+       ╚═══════════════════════════╝ */
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+
+    /* ╔═════════════════════════════════╗
+       ║ Гигиена импортов и модулей      ║
+       ╚═════════════════════════════════╝ */
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "esModuleInterop": false,
+    "allowImportingTsExtensions": false,
+    "allowArbitraryExtensions": false,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+
+    /* ╔══════════════════╗
+       ║ Поведение сборки ║
+       ╚══════════════════╝ */
+    "noEmit": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuildinfo",
+
+    /* ╔══════════════╗
+       ║ Пути проекта ║
+       ╚══════════════╝ */
+    "rootDir": "./src"
   },
-  "include": ["src"]
+
+  /* ╔════════════════════╗
+     ║ Границы компиляции ║
+     ╚════════════════════╝ */
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }

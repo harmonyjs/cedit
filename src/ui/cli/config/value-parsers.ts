@@ -1,7 +1,7 @@
 /**
  * Value parsing utilities for CLI configuration.
  */
-import path from 'node:path';
+import * as path from 'node:path';
 import type { CliConfig } from '../../../app/model/index.js'; // Adjusted path
 
 /**

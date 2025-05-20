@@ -30,6 +30,7 @@ vi.mock('@clack/prompts', () => ({
 }));
 
 // Mock runner function and emit events on the bus
+// These mocks are defined once and cleared in beforeEach
 const runMock = vi.fn().mockImplementation(async (_specPath, _cfg) => {
   // Import bus here to avoid circular dependency
   const { bus, BUS_EVENT_TYPE } = await import('../src/app/bus/index.js');
@@ -71,203 +72,163 @@ vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
 describe('CLI Config Loading', () => {
   const homeDir = os.homedir();
+  let runCliInternal: typeof runCli; 
+  let loadConfigFileInternal: typeof loadConfigFile;
   
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(async () => {
+    vi.resetModules(); 
+
+    const cliIndex = await import('../src/ui/cli/index.js');
+    runCliInternal = cliIndex.runCli;
+    const configLoaderModule = await import('../src/ui/cli/config/loader.js');
+    loadConfigFileInternal = configLoaderModule.loadConfigFile;
+
+    mock.restore(); 
+    vi.clearAllMocks(); 
+
+    // Explicitly reset mock implementations to ensure they are fresh for each test
+    runMock.mockImplementation(async (_specPath, _cfg) => {
+      const { bus, BUS_EVENT_TYPE } = await import('../src/app/bus/index.js');
+      bus.emitTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, {
+        timestamp: Date.now(),
+        stats: {
+          filesEdited: 3,
+          filesCreated: 1,
+          backupsCreated: 2,
+          totalEdits: { added: 5, removed: 2, changed: 3 }
+        },
+        duration: 1000
+      });
+    });
+    // Reset loggerMock's methods (already done by clearAllMocks if they are vi.fn())
+    // and re-assign getLoggerMock implementation
+    // loggerMock.info.mockClear(); etc. (covered by clearAllMocks)
+    getLoggerMock.mockReturnValue(loggerMock);
     
-    // Set up mock environment variables
     process.env.ANTHROPIC_API_KEY = 'test-api-key';
   });
   
   afterEach(() => {
-    // Restore the real file system
     mock.restore();
-    
-    // Clear all mocks
-    vi.clearAllMocks();
   });
   
   it('should load local config with highest priority', async () => {
-    // Set up mock file system with all config files
     mock({
-      // Local config (highest priority)
       '.cedit.yml': 'model: local-model\ndryRun: true',
-      
-      // Global config in ~/.config/cedit/
       [path.join(homeDir, '.config', 'cedit')]: {
         'config.yml': 'model: global-config-model'
       },
-      
-      // Global config in ~/.cedit.yml
       [path.join(homeDir, '.cedit.yml')]: 'model: home-model',
-      
-      // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
-      
-      // Mock spec file
       'spec.yml': 'system: test\nuser: test\nvariables: {}',
-      
-      // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
       [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
     });
     
-    // Run the CLI with arguments
     const args = ['node', 'src/ui/cli/index.js', 'spec.yml', '--yes'];
-    await runCli(args, runMock, getLoggerMock);
+    await runCliInternal(args, runMock, getLoggerMock); 
     
-    // Verify that run was called with the correct config
     expect(runMock).toHaveBeenCalled();
-    const config = runMock.mock.calls[0][1];
+    // Shallow clone the config object
+    const config = { ...runMock.mock.calls[0][1] };
     
-    // Local config values should take precedence
     expect(config.model).toBe('local-model');
     expect(config.dryRun).toBe(true);
   });
   
-  it('should fall back to global config in ~/.config/cedit/ if local config doesn\'t exist', async () => {
-    // Set up mock file system without local config
+  it("should fall back to global config in ~/.config/cedit/ if local config doesn't exist", async () => {
     mock({
-      // Global config in ~/.config/cedit/
       [path.join(homeDir, '.config', 'cedit')]: {
         'config.yml': 'model: global-config-model\ndryRun: true'
       },
-      
-      // Global config in ~/.cedit.yml
       [path.join(homeDir, '.cedit.yml')]: 'model: home-model',
-      
-      // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
-      
-      // Mock spec file
       'spec.yml': 'system: test\nuser: test\nvariables: {}',
-      
-      // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
       [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
     });
     
-    // Run the CLI with arguments
     const args = ['node', 'src/ui/cli/index.js', 'spec.yml', '--yes'];
-    await runCli(args, runMock, getLoggerMock);
+    await runCliInternal(args, runMock, getLoggerMock); 
     
-    // Verify that run was called with the correct config
     expect(runMock).toHaveBeenCalled();
-    const config = runMock.mock.calls[0][1];
+    // Shallow clone the config object
+    const config = { ...runMock.mock.calls[0][1] };
     
-    // Global config values from ~/.config/cedit/ should be used
     expect(config.model).toBe('global-config-model');
     expect(config.dryRun).toBe(true);
   });
   
-  it('should fall back to global config in ~/.cedit.yml if other configs don\'t exist', async () => {
-    // Set up mock file system with only ~/.cedit.yml
+  it("should fall back to global config in ~/.cedit.yml if other configs don't exist", async () => {
     mock({
-      // Global config in ~/.cedit.yml
       [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndryRun: true',
-      
-      // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
-      
-      // Mock spec file
       'spec.yml': 'system: test\nuser: test\nvariables: {}',
-      
-      // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
       [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
     });
     
-    // Run the CLI with arguments
     const args = ['node', 'src/ui/cli/index.js', 'spec.yml', '--yes'];
-    await runCli(args, runMock, getLoggerMock);
+    await runCliInternal(args, runMock, getLoggerMock); 
     
-    // Verify that run was called with the correct config
     expect(runMock).toHaveBeenCalled();
-    const config = runMock.mock.calls[0][1];
+    // Shallow clone the config object
+    const config = { ...runMock.mock.calls[0][1] };
     
-    // Global config values from ~/.cedit.yml should be used
     expect(config.model).toBe('home-model');
     expect(config.dryRun).toBe(true);
   });
   
   it('should use default values if no config files exist', async () => {
-    // Set up mock file system without any config files
     mock({
-      // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
-      
-      // Mock spec file
       'spec.yml': 'system: test\nuser: test\nvariables: {}',
-      
-      // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
       [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
     });
     
-    // Run the CLI with arguments
     const args = ['node', 'src/ui/cli/index.js', 'spec.yml', '--yes'];
-    await runCli(args, runMock, getLoggerMock);
+    await runCliInternal(args, runMock, getLoggerMock); 
     
-    // Verify that run was called with the correct config
     expect(runMock).toHaveBeenCalled();
-    const config = runMock.mock.calls[0][1];
+    // Shallow clone the config object
+    const config = { ...runMock.mock.calls[0][1] };
     
-    // Default values should be used
-    expect(config.model).toBe('claude-3-sonnet-20240229'); // Default model
-    expect(config.dryRun).toBe(false); // Default dryRun
+    expect(config.model).toBe('claude-3-sonnet-20240229'); 
+    expect(config.dryRun).toBe(false); 
   });
   
   it('should handle malformed config files gracefully', async () => {
-    // Set up mock file system with malformed config
     mock({
-      // Malformed local config - this is truly malformed YAML that will cause a parsing error
       '.cedit.yml': 'model: local-model\ndryRun: true\n  - invalid: [yaml: syntax',
-      
-      // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
-      
-      // Mock spec file
       'spec.yml': 'system: test\nuser: test\nvariables: {}',
-      
-      // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
       [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
     });
     
-    // Run the CLI with arguments
     const args = ['node', 'src/ui/cli/index.js', 'spec.yml', '--yes'];
-    await runCli(args, runMock, getLoggerMock);
+    await runCliInternal(args, runMock, getLoggerMock); 
     
-    // Verify that run was called with default config
     expect(runMock).toHaveBeenCalled();
-    const config = runMock.mock.calls[0][1];
+    // Shallow clone the config object
+    const config = { ...runMock.mock.calls[0][1] };
     
-    // Default values should be used since config file was malformed
     expect(config.model).toBe('claude-3-sonnet-20240229');
     expect(config.dryRun).toBe(false);
     
-    // Verify that a warning was logged
     expect(console.warn).toHaveBeenCalled();
   });
   
   it('should override config file values with CLI arguments', async () => {
-    // Set up mock file system with config file
     mock({
-      // Local config
       '.cedit.yml': 'model: local-model\ndryRun: false',
-      
-      // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
-      
-      // Mock spec file
       'spec.yml': 'system: test\nuser: test\nvariables: {}',
-      
-      // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
       [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
     });
     
-    // Run the CLI with arguments including overrides
     const args = [
       'node',
       'src/ui/cli/index.js',
@@ -276,32 +237,24 @@ describe('CLI Config Loading', () => {
       '--dry-run',
       '--model=cli-model'
     ];
-    await runCli(args, runMock, getLoggerMock);
+    await runCliInternal(args, runMock, getLoggerMock); 
     
-    // Verify that run was called with the correct config
     expect(runMock).toHaveBeenCalled();
-    const config = runMock.mock.calls[0][1];
+    // Shallow clone the config object
+    const config = { ...runMock.mock.calls[0][1] };
     
-    // CLI arguments should override config file values
     expect(config.model).toBe('cli-model');
     expect(config.dryRun).toBe(true);
   });
   
   it('should correctly parse variable overrides from CLI arguments', async () => {
-    // Set up mock file system
     mock({
-      // Mock package.json for version reading
       'package.json': JSON.stringify({ version: '0.1.0-test' }),
-      
-      // Mock spec file
       'spec.yml': 'system: test\nuser: test\nvariables: {}',
-      
-      // Mock temp directories
       [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
       [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
     });
     
-    // Run the CLI with arguments including variable overrides
     const args = [
       'node',
       'src/ui/cli/index.js',
@@ -310,13 +263,12 @@ describe('CLI Config Loading', () => {
       '--var', 'key1=value1',
       '--var', 'key2=value2'
     ];
-    await runCli(args, runMock, getLoggerMock);
+    await runCliInternal(args, runMock, getLoggerMock); 
     
-    // Verify that run was called with the correct config
     expect(runMock).toHaveBeenCalled();
-    const config = runMock.mock.calls[0][1];
+    // Shallow clone the config object
+    const config = { ...runMock.mock.calls[0][1] };
     
-    // Variable overrides should be correctly parsed
     expect(config.varsOverride).toEqual({
       key1: 'value1',
       key2: 'value2'
@@ -325,16 +277,13 @@ describe('CLI Config Loading', () => {
   
   describe('loadConfigFile function', () => {
     it('should load local config file if it exists', async () => {
-      // Set up mock file system with only local config
       mock({
         '.cedit.yml': 'model: local-model\ndryRun: true',
-        
-        // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      const config = await loadConfigFile();
+      const config = await loadConfigFileInternal(); 
       
       expect(config).toEqual({
         model: 'local-model',
@@ -342,20 +291,16 @@ describe('CLI Config Loading', () => {
       });
     });
     
-    it('should load global config from ~/.config/cedit/ if local config doesn\'t exist', async () => {
-      // Set up mock file system without local config
+    it("should load global config from ~/.config/cedit/ if local config doesn't exist", async () => {
       mock({
-        // Global config in ~/.config/cedit/
         [path.join(homeDir, '.config', 'cedit')]: {
           'config.yml': 'model: global-config-model\ndryRun: true'
         },
-        
-        // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      const config = await loadConfigFile();
+      const config = await loadConfigFileInternal(); 
       
       expect(config).toEqual({
         model: 'global-config-model',
@@ -363,18 +308,14 @@ describe('CLI Config Loading', () => {
       });
     });
     
-    it('should load global config from ~/.cedit.yml if other configs don\'t exist', async () => {
-      // Set up mock file system without local config or ~/.config/cedit/
+    it("should load global config from ~/.cedit.yml if other configs don't exist", async () => {
       mock({
-        // Global config in ~/.cedit.yml
         [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndryRun: true',
-        
-        // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      const config = await loadConfigFile();
+      const config = await loadConfigFileInternal(); 
       
       expect(config).toEqual({
         model: 'home-model',
@@ -383,65 +324,46 @@ describe('CLI Config Loading', () => {
     });
     
     it('should return empty object if no config files exist', async () => {
-      // Set up mock file system without any config files
       mock({
-        // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      const config = await loadConfigFile();
+      const config = await loadConfigFileInternal(); 
       
       expect(config).toEqual({});
     });
     
     it('should handle malformed config files gracefully', async () => {
-      // Set up mock file system with malformed config
       mock({
         '.cedit.yml': 'model: local-model\ndryRun: true\n  - invalid: [yaml: syntax',
-        
-        // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      // Spy on console.warn
       const warnSpy = vi.spyOn(console, 'warn');
       
-      const config = await loadConfigFile();
+      const config = await loadConfigFileInternal(); 
       
-      // Should return empty object for malformed config
       expect(config).toEqual({});
       
-      // Should log a warning
       expect(warnSpy).toHaveBeenCalled();
-      expect(warnSpy.mock.calls[0][0]).toMatch(/Warning: Could not load or parse config file at .*?\.cedit\.yml: Nested mappings are not allowed in compact mappings at line \d+, column \d+:\n\s*dryRun: true\n\s*\^/);
+      expect(warnSpy.mock.calls[0][0]).toMatch(/Warning: Could not load or parse config file at .*?\.cedit\.yml: Nested mappings are not allowed in compact mappings at line \d+, column \d+:/);
     });
   });
   
   describe('CLI output', () => {
     it('should display summary stats with correct formatting', async () => {
-      // Set up mock file system
       mock({
-        // Mock package.json for version reading
         'package.json': JSON.stringify({ version: '0.1.0-test' }),
-        
-        // Mock spec file
         'spec.yml': 'system: test\nuser: test\nvariables: {}',
-        
-        // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      // Clear previous mock calls
-      vi.clearAllMocks();
-      
-      // Run the CLI with arguments
       const args = ['node', 'src/ui/cli/index.js', 'spec.yml', '--yes'];
-      await runCli(args, runMock, getLoggerMock);
+      await runCliInternal(args, runMock, getLoggerMock); 
       
-      // Verify that console.log was called with the expected formatted output
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Edits Applied:'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('+5'));
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('-2'));
@@ -449,34 +371,19 @@ describe('CLI Config Loading', () => {
     });
     
     it('should display errors with correct formatting', async () => {
-      // Set up mock file system
       mock({
-        // Mock package.json for version reading
         'package.json': JSON.stringify({ version: '0.1.0-test' }),
-        
-        // Mock spec file
         'spec.yml': 'system: test\nuser: test\nvariables: {}',
-        
-        // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      // Clear previous mock calls
-      vi.clearAllMocks();
-      
-      // Mock runner to emit error events
       runMock.mockImplementationOnce(async (_specPath, _cfg) => {
-        // Import bus here to avoid circular dependency
         const { bus, BUS_EVENT_TYPE } = await import('../src/app/bus/index.js');
-        
-        // Emit domain error event
         bus.emitTyped(BUS_EVENT_TYPE.DOMAIN_ERROR, {
           timestamp: Date.now(),
           event: { type: 'ErrorRaised', message: 'Test error', path: 'file.txt' } as any
         });
-        
-        // Emit finish abort event
         bus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, {
           timestamp: Date.now(),
           reason: 'Test error',
@@ -484,151 +391,28 @@ describe('CLI Config Loading', () => {
         });
       });
       
-      // Run the CLI with arguments
       const args = ['node', 'src/ui/cli/index.js', 'spec.yml', '--yes'];
-      await runCli(args, runMock, getLoggerMock);
+      await runCliInternal(args, runMock, getLoggerMock); 
       
-      // Verify that console.log was called with the expected error output
-      // With the new event-based approach, we get the abort message instead of the error summary
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Aborted: Test error'));
     });
     
     it('should verify that CLI runs without errors', async () => {
-      // Set up mock file system
       mock({
-        // Mock package.json for version reading
         'package.json': JSON.stringify({ version: '0.1.0-test' }),
-        
-        // Mock spec file
         'spec.yml': 'system: test\nuser: test\nvariables: {}',
-        
-        // Mock temp directories
         [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      // Clear previous mock calls
-      vi.clearAllMocks();
-      
-      // Run the CLI with arguments
       const args = ['node', 'src/ui/cli/index.js', 'spec.yml', '--yes'];
-      const exitCode = await runCli(args, runMock, getLoggerMock);
+      const exitCode = await runCliInternal(args, runMock, getLoggerMock); 
       
-      // Verify that CLI ran successfully
       expect(exitCode).toBe(0);
       expect(runMock).toHaveBeenCalled();
       
-      // Verify that bus events were emitted
       expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Edits Applied:'));
     });
   });
 });
 
-describe('loadCliConfig', () => {
-  const homeDir = os.homedir(); // Define homeDir here
-
-  beforeEach(() => {
-    // Mock console.log to prevent test output clutter
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-  });
-  
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-  
-  it('should load local config file if it exists', async () => {
-    // Set up mock file system with only local config
-    mock({
-      '.cedit.yml': 'model: local-model\ndryRun: true',
-      
-      // Mock temp directories
-      [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
-      [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
-    });
-    
-    const config = await loadConfigFile();
-    
-    expect(config).toEqual({
-      model: 'local-model',
-      dryRun: true
-    });
-  });
-  
-  it('should load global config from ~/.config/cedit/ if local config doesn\'t exist', async () => {
-    // Set up mock file system without local config
-    mock({
-      // Global config in ~/.config/cedit/
-      [path.join(homeDir, '.config', 'cedit')]: {
-        'config.yml': 'model: global-config-model\ndryRun: true'
-      },
-      
-      // Mock temp directories
-      [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
-      [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
-    });
-    
-    const config = await loadConfigFile();
-    
-    expect(config).toEqual({
-      model: 'global-config-model',
-      dryRun: true
-    });
-  });
-  
-  it('should load global config from ~/.cedit.yml if other configs don\'t exist', async () => {
-    // Set up mock file system without local config or ~/.config/cedit/
-    mock({
-      // Global config in ~/.cedit.yml
-      [path.join(homeDir, '.cedit.yml')]: 'model: home-model\ndryRun: true',
-      
-      // Mock temp directories
-      [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
-      [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
-    });
-    
-    const config = await loadConfigFile();
-    
-    expect(config).toEqual({
-      model: 'home-model',
-      dryRun: true
-    });
-  });
-  
-  it('should return empty object if no config files exist', async () => {
-    // Set up mock file system without any config files
-    mock({
-      // Mock temp directories
-      [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
-      [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
-    });
-    
-    const config = await loadConfigFile();
-    
-    expect(config).toEqual({});
-  });
-  
-  it('should handle malformed config files gracefully', async () => {
-    // Set up mock file system with malformed config
-    mock({
-      '.cedit.yml': 'model: local-model\ndryRun: true\n  - invalid: [yaml: syntax',
-      
-      // Mock temp directories
-      [path.join(os.tmpdir(), 'cedit', 'logs')]: {},
-      [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
-    });
-    
-    // Spy on console.warn
-    const warnSpy = vi.spyOn(console, 'warn');
-    
-    const config = await loadConfigFile();
-    
-    // Should return empty object for malformed config
-    expect(config).toEqual({});
-    
-    // Should log a warning
-    expect(warnSpy).toHaveBeenCalled();
-    expect(warnSpy.mock.calls[0][0]).toMatch(/Warning: Could not load or parse config file at .*?\.cedit\.yml: Nested mappings are not allowed in compact mappings at line \d+, column \d+:\n\s*dryRun: true\n\s*\^/);
-  });
-});

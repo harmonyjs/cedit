@@ -103,10 +103,10 @@ function dispatchDomainEvent(busEventType: string, domainEvent: DomainEvent): vo
  */
 export function isTUIEnvironment(): boolean {
   const isTTY = process.stdout.isTTY;
-  const isCI = process.env.CI === 'true' || 
-               (process.env.GITHUB_ACTIONS !== undefined && process.env.GITHUB_ACTIONS !== '') || 
-               (process.env.GITLAB_CI !== undefined && process.env.GITLAB_CI !== '') || 
-               (process.env.JENKINS_URL !== undefined && process.env.JENKINS_URL !== '');
+  const isCI = process.env['CI'] === 'true' || 
+               (process.env['GITHUB_ACTIONS'] !== undefined && process.env['GITHUB_ACTIONS'] !== '') || 
+               (process.env['GITLAB_CI'] !== undefined && process.env['GITLAB_CI'] !== '') || 
+               (process.env['JENKINS_URL'] !== undefined && process.env['JENKINS_URL'] !== '');
   return isTTY && !isCI;
 }
 
@@ -118,7 +118,7 @@ export function isTUIEnvironment(): boolean {
 export function initTUI(config: CliConfig): void {
   logger = getLogger('tui', config);
   logger.info('TUI initialized');
-  if (process.env.NODE_ENV === 'development') {
+  if (process.env['NODE_ENV'] === 'development') {
     bus.setDebugMode(true);
   }
   // Inject dependencies into the event-listeners module
@@ -270,7 +270,7 @@ export function startLLMProcessing(): ReturnType<typeof spinner> | null {
 // Self-initialize the TUI module when imported, but only if in a suitable environment
 // This is done outside of any function to ensure it runs when the module is imported
 // Skip initialization in test environments
-if (isTUIEnvironment() && process.env.NODE_ENV !== 'test' && process.env.VITEST !== 'true') {
+if (isTUIEnvironment() && process.env['NODE_ENV'] !== 'test' && process.env['VITEST'] !== 'true') {
   // We'll receive the actual config via the bus INIT_CONFIG event
   // Provide a minimal partial config for the initial call to satisfy types.
   // getLogger can handle partial config for initial setup.

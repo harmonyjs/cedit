@@ -1,47 +1,28 @@
-import path from 'node:path';
-import os from 'node:os';
-import chalk from 'chalk'; // For ConfigBuilder console.warn
-import * as fsConstants from 'node:fs'; // For fs.constants.R_OK
+/**
+ * Configuration building utilities
+ */
+
+import chalk from 'chalk';
 import type { CliConfig } from '../../../app/model/index.js';
 import type { CliFlags } from '../types.js';
 import type { ConfigMetadata, ConfigOptionValue } from './definitions.js';
+import { 
+  getNestedValue, 
+  safeToString, 
+  resolveConfigPath as resolveConfigPathHelper,
+  initializeWithDefaults 
+} from './config-utils-helpers.js';
 
-/**
- * Helper to safely access nested properties from a config object.
- */
-export function getNestedValue(obj: Record<string, unknown> | undefined | null, pathString: string): unknown {
-  if (!obj) return undefined;
-  return pathString.split('.').reduce((acc: unknown, part: string) => {
-    if (typeof acc === 'object' && acc !== null && Object.prototype.hasOwnProperty.call(acc, part)) {
-      return (acc as Record<string, unknown>)[part];
-    }
-    return undefined;
-  }, obj);
-}
+// Re-export helpers
+export { getNestedValue, resolveConfigPathHelper as resolveConfigPath };
 
-/**
- * Resolves the path to the first found configuration file from standard locations.
- * Returns undefined if no config file is found.
- */
-export function resolveConfigPath(fsAccessSync: (path: string, mode?: number) => void, candidateFiles?: string[]): string | undefined {
-  const homeDir = os.homedir();
-  const defaultCandidates = [
-    path.resolve('.cedit.yml'),
-    path.join(homeDir, '.config', 'cedit', 'config.yml'),
-    path.join(homeDir, '.cedit.yml'),
-  ];
-  const filesToTry = candidateFiles || defaultCandidates;
-
-  for (const p of filesToTry) {
-    try {
-      fsAccessSync(p, fsConstants.constants.R_OK);
-      return p;
-    } catch {
-      // File doesn't exist or isn't readable, continue
-    }
-  }
-  return undefined;
-}
+// Type for metadata processor params
+type MetadataProcessorParams<TSection extends object> = {
+  metaEntry: ConfigMetadata<TSection>[number];
+  key: keyof TSection;
+  sectionDefaults: Readonly<TSection>;
+  result: Partial<TSection>;
+};
 
 // Encapsulates the logic for building the configuration
 export class ConfigBuilder {
@@ -51,100 +32,264 @@ export class ConfigBuilder {
   constructor(flags: CliFlags, fileCfgFull: Partial<CliConfig>) {
     this.flags = flags;
     this.fileCfgFull = fileCfgFull;
+    
+    // Log the loaded model value from the file config, if present
+    if (this.fileCfgFull.model !== undefined && this.fileCfgFull.model !== null && this.fileCfgFull.model !== '') {
+      console.log(`Config file contains model: "${this.fileCfgFull.model}"`);
+    }
   }
 
+  /**
+   * Builds a configuration section from defaults and metadata
+   */
   public buildSection<TSection extends object>(
     sectionDefaults: Readonly<TSection>,
     metadata: ConfigMetadata<TSection>
   ): TSection {
-    const result: Partial<TSection> = {};
+    // Initialize with defaults
+    const result = initializeWithDefaults(sectionDefaults);
+    
+    // Process each metadata entry
     for (const metaEntry of metadata) {
-      const key = metaEntry.key;
-      if (metaEntry.isNested === true) { // strict-boolean-expressions
-        const metaNested = metaEntry;
-        const nestedSectionHardcodedDefaults = sectionDefaults[key];
-        // Ensure nestedSectionHardcodedDefaults is an object and not null
-        if (typeof nestedSectionHardcodedDefaults !== 'object' || nestedSectionHardcodedDefaults === null) { // strict-boolean-expressions
-          console.warn(chalk.yellow(`Warning: Default value for nested key '${String(key)}' is not an object in hardcoded defaults. Skipping.`));
-          // Ensure sectionDefaults[key] is not undefined before assigning empty object
-          if (typeof sectionDefaults[key] !== 'undefined') { // strict-boolean-expressions
-            result[key] = {} as TSection[typeof key];
-          }
-          continue;
-        }
-        result[key] = this.buildSection(
-          nestedSectionHardcodedDefaults as Readonly<Extract<TSection[typeof key], object>>,
-          metaNested.nestedMetadata as ConfigMetadata<Extract<TSection[typeof key], object>>
-        );
-      } else {
-        const metaValue = metaEntry;
-        result[key] = this.resolveSingleValue(
-          metaValue,
-          sectionDefaults[key]
-        );
-      }
+      this.processMetadataEntry({
+        metaEntry,
+        key: metaEntry.key,
+        sectionDefaults,
+        result
+      });
     }
+    
     return result as TSection;
   }
 
+  // Instance methods (non-static)
+  /**
+   * Get a value from command-line flags
+   */
   private getValueFromCli<TSection extends object, K extends keyof TSection>(
-    metaValue: ConfigOptionValue<TSection, K>,
+    metaValue: ConfigOptionValue<TSection, K>
   ): TSection[K] | undefined {
-    // Ensure flagKey exists and is a valid key of CliFlags before accessing this.flags
-    if (typeof metaValue.flagKey === 'string' && metaValue.flagKey in this.flags && typeof this.flags[metaValue.flagKey] !== 'undefined') { // strict-boolean-expressions
+    if (typeof metaValue.flagKey === 'string' && 
+        metaValue.flagKey in this.flags && 
+        this.flags[metaValue.flagKey] !== undefined) {
       return metaValue.parser(this.flags[metaValue.flagKey]);
     }
     return undefined;
   }
 
+  /**
+   * Get a value from the file configuration
+   */
   private getValueFromFile<TSection extends object, K extends keyof TSection>(
     metaValue: ConfigOptionValue<TSection, K>,
     useDefaultPath: boolean
   ): TSection[K] | undefined {
+    // Get path config and early return if not defined
     const pathConfig = useDefaultPath ? metaValue.fileDefaultPath : metaValue.fileConfigPath;
-    if (typeof pathConfig === 'undefined') return undefined; // strict-boolean-expressions
+    if (pathConfig === undefined) return undefined;
 
-    // Ensure isDefaultsSectionProperty is explicitly checked for boolean value
-    if (useDefaultPath && (metaValue.isDefaultsSectionProperty === true)) return undefined; // strict-boolean-expressions
+    // Skip if using default path for defaults section properties
+    if (useDefaultPath && metaValue.isDefaultsSectionProperty === true) {
+      return undefined;
+    }
 
+    // Get and parse the value
+    return this.getAndParseFileValue(metaValue, pathConfig);
+  }
+
+  /**
+   * Helper to get and parse a value from file configuration
+   */
+  private getAndParseFileValue<TSection extends object, K extends keyof TSection>(
+    metaValue: ConfigOptionValue<TSection, K>,
+    pathConfig: string | ((fileCfg: Partial<CliConfig>) => unknown)
+  ): TSection[K] | undefined {
     const valFromFile = typeof pathConfig === 'function'
       ? pathConfig(this.fileCfgFull)
       : getNestedValue(this.fileCfgFull, pathConfig);
-
+      
+    const keyString = String(metaValue.key);
+    const isModelProperty = keyString === 'model';
+    
+    // Log raw value for model
+    if (isModelProperty) {
+      const pathConfigStr = typeof pathConfig === 'function' ? '[function]' : pathConfig;
+      console.log(`Value from file (${pathConfigStr}): `, valFromFile);
+    }
+    
+    // Parse and return the value if defined
     if (valFromFile !== undefined) {
-      return metaValue.parser(valFromFile);
+      const parsedValue = metaValue.parser(valFromFile);
+      
+      // Log parsed value for model
+      if (isModelProperty && parsedValue !== undefined) {
+        console.log(`Parsed value for model: "${safeToString(parsedValue)}"`);
+      }
+      
+      return parsedValue;
     }
     return undefined;
   }
 
+  /**
+   * Process a single metadata entry
+   */
+  private processMetadataEntry<TSection extends object>(
+    params: MetadataProcessorParams<TSection>
+  ): void {
+    const { metaEntry, key, sectionDefaults, result } = params;
+    
+    if (metaEntry.isNested === true) {
+      this.processNestedEntry({
+        metaEntry: metaEntry as ConfigMetadata<TSection>[number] & { isNested: true },
+        key,
+        sectionDefaults,
+        result
+      });
+    } else {
+      this.processSimpleEntry({
+        metaEntry,
+        key,
+        sectionDefaults,
+        result
+      });
+    }
+  }
+
+  /**
+   * Process a nested metadata entry
+   */
+  private processNestedEntry<TSection extends object>(
+    params: MetadataProcessorParams<TSection> & { 
+      metaEntry: ConfigMetadata<TSection>[number] & { isNested: true }
+    }
+  ): void {
+    const { metaEntry, key, sectionDefaults, result } = params;
+    const nestedDefaults = sectionDefaults[key];
+    const keyString = String(key);
+    
+    // Skip if defaults aren't an object
+    if (typeof nestedDefaults !== 'object' || nestedDefaults === null) {
+      console.warn(chalk.yellow(`Warning: Default value for nested key '${keyString}' is not an object in hardcoded defaults. Skipping.`));
+      
+      if (sectionDefaults[key] !== undefined) {
+        result[key] = {} as TSection[typeof key];
+      }
+      return;
+    }
+    
+    // Recursively build nested section
+    result[key] = this.buildSection(
+      nestedDefaults as Readonly<Extract<TSection[typeof key], object>>,
+      metaEntry.nestedMetadata as ConfigMetadata<Extract<TSection[typeof key], object>>
+    );
+  }
+
+  /**
+   * Process a simple (non-nested) metadata entry
+   */
+  private processSimpleEntry<TSection extends object>(
+    params: MetadataProcessorParams<TSection>
+  ): void {
+    const { metaEntry, key, sectionDefaults, result } = params;
+    if (metaEntry.isNested === true) return;
+    
+    const resolvedValue = this.resolveSingleValue(metaEntry, sectionDefaults[key]);
+    
+    // Log the resolved model value
+    const keyString = String(key);
+    if (keyString === 'model' && resolvedValue !== undefined) {
+      console.log(`Resolved model value: "${safeToString(resolvedValue)}"`);
+    }
+    
+    // Only set the value if it's defined
+    if (resolvedValue !== undefined) {
+      result[key] = resolvedValue;
+    }
+  }
+
+  /**
+   * Resolve a single config value from all possible sources
+   */
   private resolveSingleValue<TSection extends object, K extends keyof TSection>(
     metaValue: ConfigOptionValue<TSection, K>,
     hardcodedDefaultForKey: TSection[K] | undefined
   ): TSection[K] | undefined {
-    let resolvedValue: TSection[K] | undefined;
+    // Get the key and check if it's the model property
+    const isModelProperty = String(metaValue.key) === 'model';
+    
+    if (isModelProperty) {
+      console.log(`Resolving value for model property...`);
+    }
 
-    resolvedValue = this.getValueFromCli(metaValue);
-    if (resolvedValue !== undefined) return resolvedValue;
+    return this.getFromCliOrEnv(metaValue, isModelProperty) ||
+           this.getFromFileCfg(metaValue, hardcodedDefaultForKey, isModelProperty);
+  }
 
-    resolvedValue = ConfigBuilder.getValueFromEnv(metaValue);
-    if (resolvedValue !== undefined) return resolvedValue;
+  /**
+   * Attempt to get value from CLI or environment variables
+   */
+  private getFromCliOrEnv<TSection extends object, K extends keyof TSection>(
+    metaValue: ConfigOptionValue<TSection, K>,
+    isModelProperty: boolean
+  ): TSection[K] | undefined {
+    // Try CLI
+    const cliValue = this.getValueFromCli(metaValue);
+    if (cliValue !== undefined) {
+      if (isModelProperty) console.log(`Using CLI value for model: "${safeToString(cliValue)}"`);
+      return cliValue;
+    }
 
-    resolvedValue = this.getValueFromFile(metaValue, false);
-    if (resolvedValue !== undefined) return resolvedValue;
+    // Try ENV 
+    const envValue = ConfigBuilder.getValueFromEnv(metaValue);
+    if (envValue !== undefined) {
+      if (isModelProperty) console.log(`Using ENV value for model: "${safeToString(envValue)}"`);
+      return envValue;
+    }
 
-    resolvedValue = this.getValueFromFile(metaValue, true);
-    if (resolvedValue !== undefined) return resolvedValue;
+    return undefined;
+  }
 
+  /**
+   * Attempt to get value from file configuration or use default
+   */
+  private getFromFileCfg<TSection extends object, K extends keyof TSection>(
+    metaValue: ConfigOptionValue<TSection, K>,
+    hardcodedDefaultForKey: TSection[K] | undefined,
+    isModelProperty: boolean
+  ): TSection[K] | undefined {
+    // Try config file
+    const configFileValue = this.getValueFromFile(metaValue, false);
+    if (configFileValue !== undefined) {
+      if (isModelProperty) console.log(`Using file config value for model: "${safeToString(configFileValue)}"`);
+      return configFileValue;
+    }
+
+    // Try default file path
+    const defaultFileValue = this.getValueFromFile(metaValue, true);
+    if (defaultFileValue !== undefined) {
+      if (isModelProperty) console.log(`Using default file config value for model: "${safeToString(defaultFileValue)}"`);
+      return defaultFileValue;
+    }
+
+    // Use hardcoded default
+    if (isModelProperty && hardcodedDefaultForKey !== undefined) {
+      console.log(`Using hardcoded default for model: "${safeToString(hardcodedDefaultForKey)}"`);
+    }
+    
     return hardcodedDefaultForKey;
   }
 
-  // This method can be static as it doesn't use 'this'
+  // Static methods
+  /**
+   * Get a value from environment variables
+   */
   private static getValueFromEnv<TSection extends object, K extends keyof TSection>(
     metaValue: ConfigOptionValue<TSection, K>
   ): TSection[K] | undefined {
-    if (typeof metaValue.envVarKey === 'string' && metaValue.envVarKey !== '') { // strict-boolean-expressions
+    if (typeof metaValue.envVarKey === 'string' && metaValue.envVarKey !== '') {
       const envValue = process.env[metaValue.envVarKey];
-      if (typeof envValue !== 'undefined') { // strict-boolean-expressions
+      if (envValue !== undefined) {
         return metaValue.parser(envValue);
       }
     }

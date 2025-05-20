@@ -11,10 +11,10 @@ import type { bus } from '../../../app/bus/index.js'; // Adjusted path
 
 export class ResourceManager { // Renamed class
   private readonly log: Logger;
-  private readonly busInstance: typeof bus;
+  // private readonly busInstance: typeof bus; // удалено как неиспользуемое
 
-  constructor(busInstance: typeof bus, log: Logger) {
-    this.busInstance = busInstance; // Retained for potential future use
+  constructor(_busInstance: typeof bus, log: Logger) {
+    // busInstance удалён как неиспользуемый
     this.log = log;
   }
 

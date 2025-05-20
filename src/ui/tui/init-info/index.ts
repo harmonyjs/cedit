@@ -31,10 +31,10 @@ export function displayInitialInfo(config: CliConfig, getVersion: () => string):
 export async function logLoadedConfigFile(fs: typeof import('node:fs/promises'), fsSync: typeof import('node:fs'), logger: Pick<Logger, 'error'>): Promise<void> {
   if (!process.stdout.isTTY) return;
   try {
-    const homeDir = (process.env.HOME !== undefined && process.env.HOME !== '') ? 
-                    process.env.HOME : 
-                    ((process.env.USERPROFILE !== undefined && process.env.USERPROFILE !== '') ? 
-                    process.env.USERPROFILE : 
+    const homeDir = (process.env['HOME'] !== undefined && process.env['HOME'] !== '') ? 
+                    process.env['HOME'] : 
+                    ((process.env['USERPROFILE'] !== undefined && process.env['USERPROFILE'] !== '') ? 
+                    process.env['USERPROFILE'] : 
                     '');
     const candidates = [
       './.cedit.yml',

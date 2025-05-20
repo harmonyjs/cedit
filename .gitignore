@@ -15,3 +15,5 @@ yarn-error.log*
 .idea/
 dist/
 specs/
+
+.tsbuildinfo

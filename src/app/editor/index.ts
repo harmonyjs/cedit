@@ -23,13 +23,13 @@ import type {
 } from '../model/index.js';
 import * as storage from '../../infra/storage/index.js';
 import { getLogger } from '../../infra/logging/index.js';
-import path from 'node:path';
-import os from 'node:os';
+import * as path from 'node:path';
+import * as os from 'node:os';
 import { emitDomainEvent } from '../bus/index.js';
 
 // Create a minimal default logger configuration
 const DEFAULT_LOG_CONFIG: CliConfig = {
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
+  anthropicApiKey: process.env['ANTHROPIC_API_KEY'] ?? '',
   model: 'claude-3-sonnet-20240229',
   retries: 3,
   sleepBetweenRequestsMs: 1000,

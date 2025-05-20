@@ -90,11 +90,12 @@ export class CompletionHandler {
     this.log.debug('Stopping completion event listeners.');
     if (this.summaryHandler) {
       this.busInstance.offTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, this.summaryHandler);
-      this.summaryHandler = undefined;
+      // exactOptionalPropertyTypes: true — присваиваем no-op вместо undefined
+      this.summaryHandler = (() => undefined) as typeof this.summaryHandler;
     }
     if (this.abortHandler) {
       this.busInstance.offTyped(BUS_EVENT_TYPE.FINISH_ABORT, this.abortHandler);
-      this.abortHandler = undefined;
+      this.abortHandler = (() => undefined) as typeof this.abortHandler;
     }
     this.isListening = false;
   }

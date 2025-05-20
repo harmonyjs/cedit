@@ -8,9 +8,9 @@
  * the CliConfig, and subsequent calls reuse it with different scopes.
  */
 
-import pino from 'pino';
-import path from 'node:path';
-import fs from 'node:fs';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import * as pino from 'pino';
 import type { CliConfig } from '../../app/model/index.js';
 
 /**
@@ -36,29 +36,30 @@ function createRootLogger(config: CliConfig): pino.Logger {
   );
 
   // Check if we're in development mode
-  const isDev = process.env.NODE_ENV !== 'production';
+  const isDev = process.env['NODE_ENV'] !== 'production';
   
   if (isDev) {
-    return pino(
-      {
-        level: config.log.level,
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'HH:MM:ss',
-            ignore: 'pid,hostname'
-          }
+    // Using type assertion to inform TypeScript that this is safe
+    return pino.default({
+      level: config.log.level,
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'HH:MM:ss',
+          ignore: 'pid,hostname'
         }
       }
-    );
+    });
   }
 
-  return pino(
+  // base: null disables pid/hostname in pino >=8
+  // Using type assertion to inform TypeScript that this is safe
+  return pino.default(
     {
       level: config.log.level,
       timestamp: pino.stdTimeFunctions.isoTime,
-      base: undefined // remove pid, hostname for brevity
+      base: null // disables pid, hostname for brevity
     },
     pino.destination({ dest: logfile, sync: false })
   );
@@ -73,10 +74,13 @@ function createRootLogger(config: CliConfig): pino.Logger {
  * @param scope - The logical source of the log (e.g., 'storage', 'cli')
  * @param config - The CLI configuration (required only for first call)
  * @returns A scoped logger instance
+ * @throws {Error} When root logger is not initialized and no config is provided
  */
 export function getLogger(scope: string, config?: CliConfig): pino.Logger {
   if (!rootLogger) {
-    if (!config) throw new Error('Root logger not initialised: supply CliConfig');
+    if (!config) {
+      throw new Error('Root logger not initialised: supply CliConfig');
+    }
     rootLogger = createRootLogger(config);
   }
   return rootLogger.child({ scope });

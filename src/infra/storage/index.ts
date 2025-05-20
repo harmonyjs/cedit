@@ -9,8 +9,8 @@
  * swap (e.g., to a database), and test.
  */
 
-import path from 'node:path';
-import fs from 'node:fs/promises';
+import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
 import { getLogger } from '../logging/index.js';
 import type { CliConfig, ReplaceCommand as ReplaceUse, InsertCommand as InsertUse, EditStats } from '../../app/model/index.js';
 

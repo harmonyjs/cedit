@@ -83,10 +83,11 @@ export function emitFinishSummary(
 /**
  * Helper function to emit a finish:abort event
  */
+// exactOptionalPropertyTypes: true требует, чтобы опциональные поля были явно undefined
 export function emitFinishAbort(reason: string, code?: string): boolean {
   return bus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, {
     timestamp: Date.now(),
     reason,
-    code
+    ...(code !== undefined ? { code } : {})
   });
 }

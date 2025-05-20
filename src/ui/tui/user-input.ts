@@ -42,7 +42,9 @@ export async function promptVariables(): Promise<Record<string, string> | null> 
     } else {
       const parts = (varInput).split('=');
       if (parts.length === KEY_VALUE_PAIR_LENGTH) {
-        variables[parts[0].trim()] = parts[1].trim();
+        if (typeof parts[0] !== 'undefined' && typeof parts[1] !== 'undefined') {
+          variables[parts[0].trim()] = parts[1].trim();
+        }
       } else {
         log.warn('Invalid format. Use key=value');
       }

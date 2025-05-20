@@ -8,7 +8,7 @@
  * It serves as the central "brain" that glues LLM → Editor → Events together.
  */
 
-import fs from 'node:fs/promises';
+import * as fs from 'node:fs/promises';
 import yaml from 'yaml';
 import type {
   Spec,

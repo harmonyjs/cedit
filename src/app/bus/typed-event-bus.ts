@@ -11,7 +11,7 @@ import {
 import { validatePayload } from './payload-validator.js';
 
 const DEFAULT_LOG_CONFIG = {
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
+  anthropicApiKey: process.env['ANTHROPIC_API_KEY'] ?? '',
   model: 'claude-3-sonnet-20240229',
   retries: 3,
   sleepBetweenRequestsMs: 1000,
@@ -88,7 +88,7 @@ export class TypedEventBus extends EventEmitter {
         event: eventType, 
         error: error instanceof Error ? error.message : String(error)
       }, 'Error emitting event');
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env['NODE_ENV'] !== 'production') {
         throw error;
       }
       return false;
@@ -199,14 +199,14 @@ export class TypedEventBus extends EventEmitter {
    */
   private static sanitizePayload<T extends BusEventPayload>(payload: T): Record<string, unknown> {
     const result: Record<string, unknown> = { ...payload };
-    if ('config' in result && result.config !== null && typeof result.config === 'object') {
-      const configObj = result.config as Record<string, unknown>;
-      if (typeof configObj.anthropic_api_key === 'string') {
-        configObj.anthropic_api_key = '***REDACTED***';
+    if ('config' in result && result['config'] !== null && typeof result['config'] === 'object') {
+      const configObj = result['config'] as Record<string, unknown>;
+      if (typeof configObj['anthropic_api_key'] === 'string') {
+        configObj['anthropic_api_key'] = '***REDACTED***';
       }
     }
-    if (typeof result.anthropic_api_key === 'string') {
-      result.anthropic_api_key = '***REDACTED***';
+    if (typeof result['anthropic_api_key'] === 'string') {
+      result['anthropic_api_key'] = '***REDACTED***';
     }
     return result;
   }

@@ -2,24 +2,24 @@
  * CLI configuration loading and assembly utilities
  */
 
-import path from 'node:path';
-import os from 'node:os';
+import * as path from 'node:path';
+import * as os from 'node:os';
 import yaml from 'yaml';
 import chalk from 'chalk';
 import * as fs from 'node:fs/promises';
 import type { CliConfig } from '../../../app/model/index.js';
 import type { CliFlags } from '../types.js';
-import { type ZodIssue, type ZodError } from 'zod';
+import type { ZodError } from 'zod';
 import {
   partialCliConfigFromFileSchema as PartialCliConfigFromFileSchema,
   type PartialCliConfigFromFile,
 } from './schemas.js';
 import {
-  CONFIG_METADATA, // Still needed for loadConfiguration
-} from './definitions.js';
-import {
-  ConfigBuilder // Import ConfigBuilder
-} from './config-utils.js';
+  isValidationFailure,
+  logValidationIssues,
+  isNonEnoentError,
+  isEnoentError
+} from './validation-helpers.js';
 
 // Default configuration values
 const DEFAULT_LOG_DIR = path.join(os.tmpdir(), 'cedit', 'logs');
@@ -83,59 +83,23 @@ async function loadIndividualConfigFile(filePath: string): Promise<PartialCliCon
 }
 
 /**
- * Returns true if the validation result is a failure.
+ * Processes variable overrides from CLI flags
  */
-function isValidationFailure(result: unknown): result is { success: false; error: ZodError } {
-  return (
-    typeof result === 'object' && 
-    result !== null && 
-    'success' in result && 
-    // Type guard to avoid using 'any'
-    typeof result === 'object' &&
-    result !== null &&
-    'success' in result && 
-    result.success === false
-  );
-}
-
-/**
- * Logs validation issues to the console.
- */
-function logValidationIssues(error: ZodError, filePath: string): void {
-  console.warn(chalk.yellow(`Warning: Configuration file at ${filePath} has validation errors:`));
-  error.issues.forEach((issue: ZodIssue) => {
-    console.warn(chalk.yellow(`  - Path: ${issue.path.join('.')}, Message: ${issue.message}`));
-  });
-}
-
-/**
- * Returns true if the error is not an ENOENT error.
- */
-function isNonEnoentError(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && typeof (error as { code: unknown }).code === 'string' && (error as { code: string }).code !== 'ENOENT';
-}
-
-/**
- * Returns true if the error is an ENOENT error.
- */
-function isEnoentError(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && typeof (error as { code: unknown }).code === 'string' && (error as { code: string }).code === 'ENOENT';
-}
-
 function mergeVarsOverrideSection(flags: CliFlags): Record<string, string> {
   // Magic number 2: exactly two parts expected for key=value pairs
   const KEY_VALUE_PAIR_LENGTH = 2;
   return flags.var.reduce<Record<string, string>>((acc, pair) => {
     const parts = pair.split('=');
     if (parts.length === KEY_VALUE_PAIR_LENGTH) {
-      acc[parts[0].trim()] = parts[1].trim();
+      if (typeof parts[0] !== 'undefined' && typeof parts[1] !== 'undefined') {
+        acc[parts[0].trim()] = parts[1].trim();
+      }
     } else {
       console.warn(chalk.yellow(`Ignoring invalid --var format: "${pair}"`));
     }
     return acc;
   }, {});
 }
-
 
 /**
  * Loads the first found config file from the standard locations.
@@ -151,28 +115,152 @@ export async function loadConfigFile(): Promise<PartialCliConfigFromFile> {
   for (const p of candidateFiles) {
     const loadedCfg = await loadIndividualConfigFile(p);
     if (loadedCfg) {
-      // console.log(chalk.dim(`Loaded configuration from: ${p}`)); // Optional: log which file was loaded
       return loadedCfg;
     }
   }
   return {}; // Ensure a value is returned if no config file is found
 }
 
+/**
+ * Handles model configuration
+ */
+function handleModelValue(
+  config: CliConfig, 
+  flags: CliFlags, 
+  fileCfg: PartialCliConfigFromFile
+): void {
+  // Handle model
+  if (typeof flags.model === 'string' && flags.model !== '') {
+    config.model = flags.model;
+  } else if (typeof fileCfg.model === 'string' && fileCfg.model !== '') {
+    config.model = fileCfg.model;
+  }
+}
+
+/**
+ * Handles general numeric and boolean settings
+ */
+function handleGeneralSettings(
+  config: CliConfig, 
+  flags: CliFlags, 
+  fileCfg: PartialCliConfigFromFile
+): void {
+  // Handle dryRun - check if it's explicitly set in flags (not undefined)
+  if (flags.dryRun !== undefined) {
+    config.dryRun = flags.dryRun;
+  } else if (typeof fileCfg.dryRun === 'boolean') {
+    config.dryRun = fileCfg.dryRun;
+  }
+  
+  // Handle maxTokens
+  if (typeof flags.maxTokens === 'number') {
+    config.maxTokens = flags.maxTokens;
+  } else if (typeof fileCfg.maxTokens === 'number') {
+    config.maxTokens = fileCfg.maxTokens;
+  }
+  
+  // Handle retries
+  if (typeof flags.retries === 'number') {
+    config.retries = flags.retries;
+  } else if (typeof fileCfg.retries === 'number') {
+    config.retries = fileCfg.retries;
+  }
+  
+  // Handle sleepBetweenRequestsMs
+  if (typeof flags.sleepMs === 'number') {
+    config.sleepBetweenRequestsMs = flags.sleepMs;
+  } else if (typeof fileCfg.sleepBetweenRequestsMs === 'number') {
+    config.sleepBetweenRequestsMs = fileCfg.sleepBetweenRequestsMs;
+  }
+}
+
+/**
+ * Handles log configuration
+ */
+function handleLogConfig(
+  config: CliConfig, 
+  flags: CliFlags, 
+  fileCfg: PartialCliConfigFromFile
+): void {
+  // Handle log config from file
+  if (fileCfg.log) {
+    if (fileCfg.log.level === 'info' || fileCfg.log.level === 'error') {
+      config.log.level = fileCfg.log.level;
+    }
+    if (typeof fileCfg.log.dir === 'string' && fileCfg.log.dir !== '') {
+      config.log.dir = fileCfg.log.dir;
+    }
+  }
+  
+  // Handle log level from command line (takes precedence)
+  if (typeof flags.logLevel === 'string' && flags.logLevel !== '') {
+    config.log.level = flags.logLevel as 'info' | 'error';
+  }
+  
+  // Handle log directory from command line (takes precedence)
+  if (typeof flags.logDir === 'string' && flags.logDir !== '') {
+    config.log.dir = flags.logDir;
+  }
+}
+
+/**
+ * Handles backup configuration
+ */
+function handleBackupConfig(
+  config: CliConfig, 
+  flags: CliFlags, 
+  fileCfg: PartialCliConfigFromFile
+): void {
+  // Handle backup config from file
+  if (fileCfg.backup) {
+    if (typeof fileCfg.backup.dir === 'string' && fileCfg.backup.dir !== '') {
+      config.backup.dir = fileCfg.backup.dir;
+    }
+    if (typeof fileCfg.backup.keepForDays === 'number') {
+      config.backup.keepForDays = fileCfg.backup.keepForDays;
+    }
+  }
+  
+  // Handle backup directory from command line (takes precedence)
+  if (typeof flags.backupDir === 'string' && flags.backupDir !== '') {
+    config.backup.dir = flags.backupDir;
+  }
+}
+
+/**
+ * Loads and merges configuration from various sources
+ */
 export async function loadConfiguration(flags: CliFlags): Promise<CliConfig> {
   const fileCfg = await loadConfigFile();
   if (Object.keys(fileCfg).length === 0) {
     console.log(chalk.dim('No config file found, using defaults and CLI flags.'));
   }
 
-  // Instantiate the builder
-  const builder = new ConfigBuilder(flags, fileCfg as Partial<CliConfig>);
+  // Create a shallow copy of DEFAULT_CONFIG to prevent modifying the original
+  const config: CliConfig = {...DEFAULT_CONFIG};
 
-  // Use the builder to construct the main configuration
-  const mergedConfig = builder.buildSection(
-    DEFAULT_CONFIG, // Hardcoded defaults for the top-level CliConfig structure
-    CONFIG_METADATA
-  );
+  // Handle model configuration
+  handleModelValue(config, flags, fileCfg);
   
-  mergedConfig.varsOverride = mergeVarsOverrideSection(flags);
-  return mergedConfig;
+  // Handle general settings
+  handleGeneralSettings(config, flags, fileCfg);
+  
+  // Handle log configuration
+  handleLogConfig(config, flags, fileCfg);
+  
+  // Handle backup configuration
+  handleBackupConfig(config, flags, fileCfg);
+  
+  // Handle API key from environment or config
+  const envApiKey = process.env['ANTHROPIC_API_KEY'];
+  if (typeof envApiKey === 'string' && envApiKey !== '') {
+    config.anthropicApiKey = envApiKey;
+  } else if (typeof fileCfg.anthropicApiKey === 'string' && fileCfg.anthropicApiKey !== '') {
+    config.anthropicApiKey = fileCfg.anthropicApiKey;
+  }
+  
+  // Handle variable overrides
+  config.varsOverride = mergeVarsOverrideSection(flags);
+  
+  return config;
 }

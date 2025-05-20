@@ -36,7 +36,7 @@ export class LLM {
     this.cfg = cfg;
     this.log = getLogger('llm');
     
-    const apiKey = process.env.ANTHROPIC_API_KEY ?? cfg.anthropicApiKey;
+    const apiKey = process.env['ANTHROPIC_API_KEY'] ?? cfg.anthropicApiKey;
     // Explicit check for empty string for apiKey
     if (typeof apiKey !== 'string' || apiKey === '') {
       throw new Error('ANTHROPIC_API_KEY environment variable or config value not set or is empty.');

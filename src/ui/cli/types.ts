@@ -3,12 +3,12 @@ export interface CliFlags {
   dryRun: boolean | undefined;
   var: string[];
   logLevel: string | undefined;
-  logDir?: string;
-  backupDir?: string;
-  maxTokens?: number;
-  model?: string;
-  retries?: number;
-  sleepMs?: number;
+  logDir: string;
+  backupDir: string;
+  maxTokens: number;
+  model: string;
+  retries: number;
+  sleepMs: number;
   yes: boolean;
 }
 
