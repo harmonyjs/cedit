@@ -14,8 +14,23 @@ import type { CliFlags } from '../types.js';
  */
 async function waitForTuiConfirmation(log: Logger, eventBus: typeof bus): Promise<boolean> {
   log.info('Waiting for TUI confirmation...');
+  
+  // Add timeout to prevent hanging indefinitely
+  const timeoutMs = 5000; // 5 seconds timeout
   const confirmPromise = new Promise<boolean>((resolve) => {
+    const timeoutId = setTimeout(() => {
+      log.warn('Confirmation timed out, proceeding with auto-confirmation');
+      // Emit our own INIT_COMPLETE event to unblock the process
+      eventBus.emitTyped(BUS_EVENT_TYPE.INIT_COMPLETE, {
+        timestamp: Date.now(),
+        success: true,
+        message: 'Auto-confirmed due to timeout'
+      });
+      resolve(true);
+    }, timeoutMs);
+    
     eventBus.onceTyped(BUS_EVENT_TYPE.INIT_COMPLETE, (payload) => {
+      clearTimeout(timeoutId);
       log.info({ payload }, 'Received INIT_COMPLETE from TUI');
       resolve(payload.success);
     });
@@ -54,18 +69,20 @@ export async function handleConfirmation( // Renamed function
     return true;
   }
 
-  const isTTY = process.stdout.isTTY;
+  // Check for both stdin and stdout TTY status to determine true interactivity
+  const isTrueInteractiveTTY = process.stdout.isTTY && process.stdin.isTTY;
 
-  if (!isTTY) {
-    // Non-TTY environment: error out
-    console.error(chalk.red('Error: cedit requires an interactive terminal for confirmation prompts when run without the --yes flag.'));
-    console.error(chalk.yellow('Please run in an interactive terminal or use the --yes flag to bypass this confirmation.'));
+  if (!isTrueInteractiveTTY) {
+    // Non-interactive environment: warn but proceed
+    log.warn('Non-interactive terminal detected without --yes flag, auto-confirming to prevent hanging.');
     bus.emitTyped(BUS_EVENT_TYPE.INIT_COMPLETE, {
       timestamp: Date.now(),
-      success: false,
-      message: 'Non-interactive terminal without --yes flag, confirmation required.',
+      success: true,
+      message: 'Auto-confirmed due to non-interactive terminal',
     });
-    return false;
+    console.warn(chalk.yellow('Warning: cedit is running in a non-interactive terminal without the --yes flag.'));
+    console.warn(chalk.yellow('For better control, run in an interactive terminal or use --yes to explicitly bypass confirmation.'));
+    return true;
   } else {
     // TTY environment: wait for TUI to handle confirmation
     return waitForTuiConfirmation(log, bus);

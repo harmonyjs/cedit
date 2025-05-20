@@ -1,4 +1,4 @@
-import { confirm, cancel } from '@clack/prompts';
+import { confirm, cancel, log } from '@clack/prompts';
 import { bus, BUS_EVENT_TYPE } from '../../../app/bus/index.js';
 
 /**
@@ -6,11 +6,16 @@ import { bus, BUS_EVENT_TYPE } from '../../../app/bus/index.js';
  * Emits INIT_COMPLETE event with the user's decision.
  */
 export async function requestUserConfirmation(): Promise<void> {
-  if (!process.stdout.isTTY) {
+  // Check if we're in a real interactive TTY environment
+  const isTrueInteractiveTTY = process.stdout.isTTY && process.stdin.isTTY;
+  
+  if (!isTrueInteractiveTTY) {
+    // Log that we're auto-confirming due to non-interactive environment
+    log.info('Non-interactive terminal detected, auto-confirming...');
     bus.emitTyped(BUS_EVENT_TYPE.INIT_COMPLETE, {
       timestamp: Date.now(),
       success: true,
-      message: 'Auto-confirmed (not in TTY)'
+      message: 'Auto-confirmed (non-interactive terminal)'
     });
     return;
   }
