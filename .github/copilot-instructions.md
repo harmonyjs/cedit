@@ -264,4 +264,14 @@
     </rationale>
     <tags>documentation,docs,consistency,architecture,maintainability</tags>
   </rule>
+  <rule>
+    <name>Autonomous Error Corrections</name>
+    <description>
+When lint, typecheck, or test errors are detected, the model must immediately fix the underlying issues without requesting user permission. Routine maintenance and straightforward bug fixes are within the model’s authority. Consult the user only on strategic or architectural decisions.
+    </description>
+    <rationale>
+Automatic resolution of routine errors accelerates development, reduces conversational overhead, and keeps focus on higher-level planning.
+    </rationale>
+    <tags>autonomy,lint,typecheck,tests,maintenance</tags>
+  </rule>
 </rules>
