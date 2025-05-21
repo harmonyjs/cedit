@@ -15,6 +15,11 @@ vi.mock('node:fs', () => {
   const mockFs = {
     existsSync: vi.fn().mockReturnValue(true),
     mkdirSync: vi.fn(),
+    createWriteStream: vi.fn().mockReturnValue({
+      write: vi.fn(),
+      end: vi.fn(),
+      on: vi.fn()
+    }),
     constants: { R_OK: 4 }
   };
   return {
@@ -46,15 +51,23 @@ vi.mock('pino', () => {
     child: vi.fn().mockReturnThis()
   };
   
+  // Create a function with properties to mimic pino
+  const mockPinoFn: any = vi.fn().mockReturnValue(mockLogger);
+  
+  // Add properties directly to the function
+  mockPinoFn.stdTimeFunctions = {
+    isoTime: vi.fn().mockReturnValue('2025-05-21T12:00:00.000Z')
+  };
+  
   return {
-    default: vi.fn().mockReturnValue(mockLogger),
+    pino: mockPinoFn,
     destination: vi.fn().mockReturnValue({ write: vi.fn() }),
     transport: vi.fn().mockReturnValue({ target: 'pino/file' })
   };
 });
 
 // Mock getVersion from version-manager
-vi.mock('../src/app/version-manager.js', () => ({
+vi.mock('../src/ui/cli/services/version-manager.js', () => ({
   getVersion: vi.fn().mockReturnValue('0.1.0-test-mock')
 }));
 

@@ -3,7 +3,7 @@ import type {
   DomainEvent,
   EditStats
 } from '../model/index.js';
-// Merged import for both value and type from the same module to avoid duplication
+// Import both the value and the type in the same line
 // Merged import for both value and type from the same module to avoid duplication
 import { BUS_EVENT_TYPE_INFRA_LOG, type EventBusLogPayload } from '#shared/event-bus-types.js';
 

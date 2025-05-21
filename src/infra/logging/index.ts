@@ -6,12 +6,14 @@
  * 
  * It implements a singleton pattern where the root logger is created once with
  * the CliConfig, and subsequent calls reuse it with different scopes.
+ * 
+ * All log output is directed to the event bus first, allowing the TUI to control
+ * what's visible in the terminal via Clack, while still maintaining file logging.
  */
 
-import * as path from 'node:path';
-import * as fs from 'node:fs';
-import * as pino from 'pino';
+import type * as pino from 'pino';
 import type { CliConfig } from '../../app/model/index.js';
+import { createEventBusLogger } from './transport.js';
 
 /**
  * Root (singleton) pino logger. Created once per process.
@@ -24,45 +26,26 @@ let rootLogger: pino.Logger | null = null;
  * This is called only once per process.
  */
 function createRootLogger(config: CliConfig): pino.Logger {
-  // Ensure logDir exists
-  if (!fs.existsSync(config.log.dir)) {
-    fs.mkdirSync(config.log.dir, { recursive: true });
-  }
+  // Determine if we're in a CLI-only environment by checking the TUI_DISABLED env var
+  const isTuiDisabled = process.env['TUI_DISABLED'] === 'true' || 
+                       !process.stdout.isTTY ||
+                       process.env['CI'] === 'true';
   
-  const LOGFILE_DATE_LENGTH = 10; // YYYY-MM-DD
-  const logfile = path.join(
-    config.log.dir,
-    new Date().toISOString().slice(0, LOGFILE_DATE_LENGTH) + '.log'
-  );
-
-  // Check if we're in development mode
-  const isDev = process.env['NODE_ENV'] !== 'production';
-  
-  if (isDev) {
-    // Using type assertion to inform TypeScript that this is safe
-    return pino.default({
+  // If TUI is disabled, use standard Pino logger with file output
+  if (isTuiDisabled) {
+    return createEventBusLogger({
       level: config.log.level,
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'HH:MM:ss',
-          ignore: 'pid,hostname'
-        }
-      }
+      logDir: config.log.dir,
+      eventBusOnly: false // Write to both event bus and file
     });
   }
 
-  // base: null disables pid/hostname in pino >=8
-  // Using type assertion to inform TypeScript that this is safe
-  return pino.default(
-    {
-      level: config.log.level,
-      timestamp: pino.stdTimeFunctions.isoTime,
-      base: null // disables pid, hostname for brevity
-    },
-    pino.destination({ dest: logfile, sync: false })
-  );
+  // In TUI mode, use the event bus transport only
+  return createEventBusLogger({
+    level: config.log.level,
+    logDir: config.log.dir,
+    eventBusOnly: true // Only emit to event bus, no direct stdout output
+  });
 }
 
 /**

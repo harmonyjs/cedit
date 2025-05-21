@@ -2,18 +2,7 @@
  * Terminal User Interface (TUI) for cedit CLI tool
  * 
  * This module provides interactive terminal UI components using clack.
- * It subscribes to events from the Event Bus and displays them in          default:
-          // event is 'never' here because the switch should be exhaustive.
-          // payload.event still holds the original DomainEvent.
-          logger.warn({ busEventType: BusEventType.DOMAIN_EVENT_EMITTED, eventSubtype: payload.event.type }, 'Received unknown domain event subtype from DOMAIN_EVENT_EMITTED');
-      }
-    } else {
-      // This case implies BusEventType.DOMAIN_EVENT_EMITTED was received,
-      // but isDomainEventWrapper(payload) was false.
-      logger.warn({ busEventType: BusEventType.DOMAIN_EVENT_EMITTED, payloadType: typeof payload }, 'Received DOMAIN_EVENT_EMITTED with unexpected payload structure'); // Unknown event type
-          // Check if event has a 'type' property before accessing it
-          const subtype = typeof event === 'object' && event !== null && 'type' in event ? (event as { type: string }).type : 'unknown_subtype';
-          logger.warn({ eventType, eventSubtype: subtype }, 'Received unknown domain event type'); user-friendly way.
+ * It subscribes to events from the Event Bus and displays them in a user-friendly way.
  * 
  * Unlike the CLI module which handles command-line arguments and configuration,
  * this module focuses on real-time interactive display during the execution.
@@ -48,6 +37,7 @@ import {
   handleBackupCreatedEvent,
   handleErrorRaisedEvent
 } from './domain-handlers/index.js';
+import { initLogHandler } from './log-handler.js';
 
 // Logger will be initialized when needed
 let logger = getLogger('tui');
@@ -118,6 +108,10 @@ export function isTUIEnvironment(): boolean {
 export function initTUI(config: CliConfig): void {
   logger = getLogger('tui', config);
   logger.info('TUI initialized');
+  
+  // Initialize the log handler to capture all logs
+  initLogHandler();
+  
   if (process.env['NODE_ENV'] === 'development') {
     bus.setDebugMode(true);
   }

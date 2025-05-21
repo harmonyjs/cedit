@@ -8,7 +8,7 @@
 // Export the bus instance
 export { bus } from './instance.js';
 
-// Forward exports from types.ts
+// Forward exports from types.ts (except EventBusLogPayload/Level, now in shared)
 export * from './types.js';
 
 // Forward exports from emitters.ts

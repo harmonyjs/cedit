@@ -9,6 +9,7 @@ import {
   type EventTypeToPayloadMap
 } from './types.js';
 import { validatePayload } from './payload-validator.js';
+import { BUS_EVENT_TYPE_INFRA_LOG, type EventBusLogPayload } from '#shared/event-bus-types.js';
 
 const DEFAULT_LOG_CONFIG = {
   anthropicApiKey: process.env['ANTHROPIC_API_KEY'] ?? '',
@@ -45,6 +46,23 @@ export class TypedEventBus extends EventEmitter {
   constructor() {
     super();
     this.setMaxListeners(DEFAULT_MAX_LISTENERS);
+    
+    // Handle infrastructure log events dispatched via the EventEmitter directly
+    this.on(BUS_EVENT_TYPE_INFRA_LOG, (payload: unknown) => {
+      // Convert directly dispatched events to typed events
+      if (
+        payload !== null && 
+        typeof payload === 'object' &&
+        'message' in payload &&
+        'level' in payload &&
+        'scope' in payload
+      ) {
+        this.emitTyped(
+          BUS_EVENT_TYPE_INFRA_LOG as BusEventTypeValue, 
+          payload as EventBusLogPayload
+        );
+      }
+    });
   }
 
   public initLogger(config: CliConfig): void {

@@ -5,6 +5,7 @@ import {
   type FinishSummaryEvent
 } from './types.js';
 import type { CliConfig, DomainEvent } from '../model/index.js';
+import type { EventBusLogPayload } from '#shared/event-bus-types.js';
 
 /**
  * Helper function to emit an init:config event
@@ -64,6 +65,13 @@ export function emitDomainEvent(event: DomainEvent): boolean {
 
   // The 'event' object is passed as part of the payload.
   return bus.emitTyped(eventType, { timestamp: Date.now(), event });
+}
+
+/**
+ * Helper function to emit an infrastructure log event
+ */
+export function emitInfraLog(payload: EventBusLogPayload): boolean {
+  return bus.emitTyped(BUS_EVENT_TYPE.INFRA_LOG, payload);
 }
 
 /**
