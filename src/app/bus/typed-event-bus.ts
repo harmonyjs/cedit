@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import type { CliConfig } from '../model/index.js';
-import { getLogger } from '../../infra/logging/index.js';
+import { pino } from 'pino';
 import {
   type BusNamespaceType,
   type BusEventTypeValue,
@@ -11,35 +11,17 @@ import {
 import { validatePayload } from './payload-validator.js';
 import { BUS_EVENT_TYPE_INFRA_LOG, type EventBusLogPayload } from '#shared/event-bus-types.js';
 
-const DEFAULT_LOG_CONFIG = {
-  anthropicApiKey: process.env['ANTHROPIC_API_KEY'] ?? '',
-  model: 'claude-3-sonnet-20240229',
-  retries: 3,
-  sleepBetweenRequestsMs: 1000,
-  log: {
-    level: 'info' as const,
-    dir: '/tmp/cedit/logs',
-  },
-  backup: {
-    dir: '/tmp/cedit/backups',
-    keepForDays: 0,
-  },
-  defaults: {
-    dryRun: false,
-    maxTokens: 200000,
-    model: 'claude-3-sonnet-20240229',
-    retries: 3,
-    sleepBetweenRequestsMs: 1000,
-  },
-  dryRun: false,
-  maxTokens: 200000,
-  varsOverride: {},
-};
+
 
 const DEFAULT_MAX_LISTENERS = 50;
 
 export class TypedEventBus extends EventEmitter {
-  private logger = getLogger('bus', DEFAULT_LOG_CONFIG);
+  // Module-level re-entrancy guard for infra:log events
+  // Typed to avoid 'any' and ensure safe access
+  private static isEmittingInfraLog = false;
+
+  // Use a plain Pino logger for the bus to avoid infinite recursion via event bus logging
+  private readonly logger = pino({ level: 'warn', base: null, timestamp: false });
   private debugMode = false;
   private validationEnabled = true;
 
@@ -65,9 +47,14 @@ export class TypedEventBus extends EventEmitter {
     });
   }
 
-  public initLogger(config: CliConfig): void {
-    this.logger = getLogger('bus', config);
-    this.logger.info('Event Bus logger initialized with config');
+  // No-op: do not reassign logger to avoid recursion
+  /**
+   * No-op: bus logger is intentionally not reconfigurable to avoid recursion
+   * @param _config - Unused, required by interface
+   */
+  // eslint-disable-next-line class-methods-use-this, @typescript-eslint/no-unused-vars -- Required by interface, not used
+  public initLogger(_config: CliConfig): void {
+    // No-op
   }
 
   public setDebugMode(enabled: boolean): void {
@@ -93,23 +80,24 @@ export class TypedEventBus extends EventEmitter {
     eventType: TEventType,
     payload: EventTypeToPayloadMap[TEventType]
   ): boolean {
+    const isInfraLog = eventType === BUS_EVENT_TYPE_INFRA_LOG;
+
+    if (isInfraLog && TypedEventBus.isEmittingInfraLog) {
+      return false; // Prevent recursion
+    }
+
+    if (isInfraLog) {
+      TypedEventBus.isEmittingInfraLog = true;
+    }
+
     try {
-      TypedEventBus.ensureTimestamp(payload);
-      this.validateIfEnabled(eventType, payload);
-      this.logIfDebug(eventType, payload);
-      const specificResult = super.emit(eventType, payload);
-      const namespaceResult = this.emitToNamespace(eventType, payload);
-      const wildcardResult = super.emit('*', eventType, payload);
-      return specificResult || namespaceResult || wildcardResult;
+      return this.internalEmit(eventType, payload);
     } catch (error) {
-      this.logger.error({ 
-        event: eventType, 
-        error: error instanceof Error ? error.message : String(error)
-      }, 'Error emitting event');
-      if (process.env['NODE_ENV'] !== 'production') {
-        throw error;
+      return this.handleEmitError(error, eventType, isInfraLog);
+    } finally {
+      if (isInfraLog) {
+        TypedEventBus.isEmittingInfraLog = false;
       }
-      return false;
     }
   }
 
@@ -156,6 +144,47 @@ export class TypedEventBus extends EventEmitter {
     this.removeAllListeners();
     this.logger.warn('All event listeners have been removed');
     return this;
+  }
+
+  /**
+   * Handles the core logic of emitting an event after guards and pre-processing.
+   */
+  private internalEmit<TEventType extends BusEventTypeValue>(
+    eventType: TEventType,
+    payload: EventTypeToPayloadMap[TEventType]
+  ): boolean {
+    TypedEventBus.ensureTimestamp(payload);
+    this.validateIfEnabled(eventType, payload);
+    this.logIfDebug(eventType, payload);
+
+    const specificResult = super.emit(eventType, payload);
+    const namespaceResult = this.emitToNamespace(eventType, payload);
+    const wildcardResult = super.emit('*', eventType, payload);
+    return specificResult || namespaceResult || wildcardResult;
+  }
+
+  /**
+   * Handles errors during event emission.
+   */
+  private handleEmitError<TEventType extends BusEventTypeValue>(
+    error: unknown,
+    eventType: TEventType,
+    isInfraLog: boolean
+  ): boolean {
+    // Only emit error logs if not already handling infra:log to prevent recursion
+    if (!isInfraLog) {
+      this.logger.error(
+        {
+          event: eventType,
+          error: error instanceof Error ? error.message : String(error)
+        },
+        'Error emitting event'
+      );
+    }
+    if (process.env['NODE_ENV'] !== 'production') {
+      throw error;
+    }
+    return false;
   }
 
   /**

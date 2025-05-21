@@ -1,5 +1,5 @@
 import type { DomainEvent } from '../../../app/model/index.js';
-import { log, note, outro, cancel } from '@clack/prompts';
+import { log, note, outro, cancel, type spinner as ClackSpinnerType } from '@clack/prompts'; // Merged spinner type import
 import chalk from 'chalk';
 import {
   BUS_EVENT_TYPE,
@@ -7,7 +7,7 @@ import {
   type FinishAbortEvent as FinishAbortedPayload,
   type FinishSummaryEvent as FinishSummaryPayload,
   type InitConfigEvent,
-  type bus as BusInstance
+  type bus as BusInstance,
 } from '../../../app/bus/index.js';
 
 /**
@@ -23,10 +23,11 @@ type Logger = {
 };
 
 /**
- * Spinner interface for dependency injection.
+ * Spinner control functions interface for dependency injection.
  */
-type Spinner = {
-  stop: (message?: string) => void;
+type SpinnerControls = {
+  getActiveSpinner: () => ReturnType<typeof ClackSpinnerType> | null;
+  stopActiveSpinner: () => void;
 };
 
 interface HandleInitConfigEventDeps {
@@ -38,7 +39,8 @@ interface HandleInitConfigEventDeps {
 
 // These will be injected from the main TUI module
 let loggerInstance: Logger;
-let activeSpinner: Spinner | null;
+// let activeSpinner: Spinner | null; // Removed direct activeSpinner
+let spinnerControls: SpinnerControls; // Added spinner control functions
 let dispatchDomainEventFn: (busEventType: string, domainEvent: DomainEvent) => void;
 let handleInitConfigEventFn: (payload: InitConfigEvent, deps: HandleInitConfigEventDeps) => Promise<void>;
 let getVersionInstance: () => string;
@@ -47,15 +49,24 @@ let fsSyncInstance: typeof import('node:fs');
 
 export function injectTuiDeps(deps: {
   logger: Logger;
-  activeSpinner: Spinner | null;
+  // activeSpinner: Spinner | null; // Removed
+  getActiveSpinner: () => ReturnType<typeof ClackSpinnerType> | null; // Updated type
+  stopActiveSpinner: () => void;
   dispatchDomainEvent: (busEventType: string, domainEvent: DomainEvent) => void;
-  handleInitConfigEvent: (payload: InitConfigEvent, deps: HandleInitConfigEventDeps) => Promise<void>;
+  handleInitConfigEvent: (
+    payload: InitConfigEvent,
+    deps: HandleInitConfigEventDeps,
+  ) => Promise<void>;
   getVersion: () => string;
   fs: typeof import('node:fs/promises');
   fsSync: typeof import('node:fs');
 }): void {
   loggerInstance = deps.logger;
-  activeSpinner = deps.activeSpinner;
+  // activeSpinner = deps.activeSpinner; // Removed
+  spinnerControls = {
+    getActiveSpinner: deps.getActiveSpinner,
+    stopActiveSpinner: deps.stopActiveSpinner,
+  };
   dispatchDomainEventFn = deps.dispatchDomainEvent;
   handleInitConfigEventFn = deps.handleInitConfigEvent;
   getVersionInstance = deps.getVersion;
@@ -67,11 +78,14 @@ export function setupActualEventListeners(bus: typeof BusInstance): void {
   // Listen for init events
    
   bus.onTyped(BUS_EVENT_TYPE.INIT_CONFIG, (payload: InitConfigEvent) => {
+    console.log('[DEBUG] TUI event-listeners: INIT_CONFIG received');
     handleInitConfigEventFn(payload, {
       logger: loggerInstance,
       getVersion: getVersionInstance,
       fs: fsInstance,
       fsSync: fsSyncInstance
+    }).then(() => {
+      console.log('[DEBUG] TUI event-listeners: handleInitConfigEventFn resolved');
     }).catch((error: unknown) => {
       loggerInstance.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in handleInitConfigEvent');
       bus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, {
@@ -114,9 +128,14 @@ export function setupActualEventListeners(bus: typeof BusInstance): void {
 
 export function handleFinishSummaryListener(payload: FinishSummaryPayload): void {
   if (!process.stdout.isTTY) return;
-  if (activeSpinner) {
-    activeSpinner.stop('Processing complete');
-    activeSpinner = null;
+  // if (activeSpinner) { // Old way
+  //   activeSpinner.stop('Processing complete');
+  //   activeSpinner = null;
+  // }
+  const currentSpinner = spinnerControls.getActiveSpinner();
+  if (currentSpinner) {
+    currentSpinner.stop('Processing complete');
+    spinnerControls.stopActiveSpinner(); // Ensure it's nulled out via the utility
   }
   const { stats, duration } = payload;
   const { totalEdits, filesEdited, filesCreated, backupsCreated } = stats;
@@ -139,11 +158,17 @@ export function handleFinishSummaryListener(payload: FinishSummaryPayload): void
 
 export function handleFinishAbortListener(payload: FinishAbortedPayload): void {
   if (!process.stdout.isTTY) return;
-  if (activeSpinner) {
-    activeSpinner.stop(chalk.red(`Aborted: ${payload.reason}`));
-    activeSpinner = null;
+  // if (activeSpinner) { // Old way
+  //   activeSpinner.stop(chalk.red(`Aborted: ${payload.reason}`));
+  //   activeSpinner = null;
+  // } else {
+  //   log.error(`Aborted: ${chalk.red(payload.reason)}`);
+  // }
+  const currentSpinner = spinnerControls.getActiveSpinner();
+  if (currentSpinner) {
+    currentSpinner.stop(chalk.red(`Aborted: ${payload.reason}`));
+    spinnerControls.stopActiveSpinner(); // Ensure it's nulled out
   } else {
-    // loggerInstance.error is not a function, assuming log.error from @clack/prompts
     log.error(`Aborted: ${chalk.red(payload.reason)}`);
   }
   if (payload.code !== undefined && payload.code !== null && payload.code !== '') {

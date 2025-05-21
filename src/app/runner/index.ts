@@ -138,78 +138,74 @@ function interpolate(spec: Spec, cfg: CliConfig): Spec {
  * @param cfg - CLI configuration
  * @returns Summary of the execution
  */
+
+/**
+ * Processes the LLM prompt stream, handling each ToolUse and collecting events.
+ * Extracted from run() to reduce function size and improve modularity.
+ *
+ * @param llm - The LLM instance
+ * @param finalSpec - The interpolated spec
+ * @param cfg - CLI configuration
+ * @param log - Logger instance
+ * @param events - Array to collect DomainEvents
+ */
+interface ProcessLLMStreamParams {
+  llm: ReturnType<typeof createLLM>;
+  finalSpec: Spec;
+  cfg: CliConfig;
+  log: ReturnType<typeof getLogger>;
+  events: DomainEvent[];
+}
+
+/**
+ * Processes the LLM prompt stream, handling each ToolUse and collecting events.
+ * Accepts a single parameter object to comply with max-params lint rule.
+ */
+async function processLLMStream({ llm, finalSpec, cfg, log, events }: ProcessLLMStreamParams): Promise<void> {
+  log.info('[DEBUG] Starting LLM prompt stream processing...');
+  let toolUseCounter = 0;
+  for await (const toolUse of llm.sendPrompt(finalSpec)) {
+    toolUseCounter++;
+    log.info({ toolUseId: toolUse.command.id, kind: toolUse.command.kind, count: toolUseCounter }, '[DEBUG] Processing tool use');
+    const event = await handleToolUse(toolUse, cfg);
+    emitDomainEvent(event);
+    events.push(event);
+    if (event.type === 'ErrorRaised' /* && isCriticalError(event) */) {
+      log.error({ event }, '[DEBUG] Critical error encountered, stopping run.');
+      // break; // Uncomment to stop on first error
+    }
+  }
+  log.info(`[DEBUG] Finished processing LLM stream. ${toolUseCounter} tool uses received.`);
+}
+
 export async function run(specPath: string, cfg: CliConfig): Promise<void> {
-  // Initialize logger here, now that we have config
   const log = getLogger('runner', cfg);
-  log.info({ specPath, dryRun: cfg.dryRun, model: cfg.model }, 'Runner starting execution'); // Corrected cfg.dry_run to cfg.dryRun
-
-  // Emit init config event
+  log.info({ specPath, dryRun: cfg.dryRun, model: cfg.model }, '[DEBUG] Runner starting execution');
   emitInitConfig(cfg);
-
   const events: DomainEvent[] = [];
   let finalSpec: Spec;
   const startTime = Date.now();
-
   try {
-    // 1. Load spec
+    console.log('[DEBUG] Runner: loading spec');
     const spec = await loadSpec(specPath);
-
-    // 2. Interpolate variables with CLI overrides
+    console.log('[DEBUG] Runner: spec loaded');
     finalSpec = interpolate(spec, cfg);
-    log.info('Spec variables interpolated');
-
-    // 3. Create LLM instance
+    log.info('[DEBUG] Spec variables interpolated');
     const llm = createLLM(cfg);
-    log.info('LLM service created');
-
-    // 4. Stream ToolUse -> editor
-    log.info('Starting LLM prompt stream processing...');
-    let toolUseCounter = 0;
-    for await (const toolUse of llm.sendPrompt(finalSpec)) {
-      toolUseCounter++;
-      log.info({ toolUseId: toolUse.command.id, kind: toolUse.command.kind, count: toolUseCounter }, 'Processing tool use');
-      const event = await handleToolUse(toolUse, cfg);
-      
-      // Emit domain event through the bus
-      emitDomainEvent(event);
-      
-      // Also collect for summary
-      events.push(event);
-      
-      // Optional: Add logic to stop early if a critical ErrorRaised event occurs
-      if (event.type === 'ErrorRaised' /* && isCriticalError(event) */) {
-         log.error({ event }, 'Critical error encountered, stopping run.');
-         // break; // Uncomment to stop on first error
-      }
-    }
-    log.info(`Finished processing LLM stream. ${toolUseCounter} tool uses received.`);
-
+    log.info('[DEBUG] LLM service created');
+    await processLLMStream({ llm, finalSpec, cfg, log, events });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
-    log.error({ error: errorMessage, stack: errorStack }, 'Unhandled error during runner execution');
-    // Ensure critical errors during setup (loadSpec, interpolate, createLLM) are captured 
-    const errorEvent: ErrorRaised = { type: 'ErrorRaised', message: `Runner failed: ${errorMessage}` }; // Explicit type
-    
-    // Emit error event through the bus
+    log.error({ error: errorMessage, stack: errorStack }, '[DEBUG] Unhandled error during runner execution');
+    const errorEvent: ErrorRaised = { type: 'ErrorRaised', message: `[DEBUG] Runner failed: ${errorMessage}` };
     emitDomainEvent(errorEvent);
-    
-    // Also collect for summary
     events.push(errorEvent);
-    
-    // Emit abort event
-    emitFinishAbort(`Runner failed: ${errorMessage}`);
-    
-    // Aggregate events for the abort summary - not using the summary since we're just emitting the abort event
+    emitFinishAbort(`[DEBUG] Runner failed: ${errorMessage}`);
     aggregate(events);
-    // No return needed as we're now using void
   }
-
-  // 5. Aggregate and return
   const summary = aggregate(events);
-  log.info({ stats: summary.stats, errors: summary.errors.length, events: events.length }, 'Run completed');
-  
-  // Emit finish summary event
+  log.info({ stats: summary.stats, errors: summary.errors.length, events: events.length }, '[DEBUG] Run completed');
   const duration = Date.now() - startTime;
   emitFinishSummary({
     filesEdited: events.filter(e => e.type === 'FileEdited').length,
@@ -221,6 +217,4 @@ export async function run(specPath: string, cfg: CliConfig): Promise<void> {
       changed: summary.stats.changed
     }
   }, duration);
-  
-  // No return needed as we're now using void
 }

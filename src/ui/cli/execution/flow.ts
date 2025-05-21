@@ -47,12 +47,18 @@ function initializeServicesAndEmitConfig(
   progressMonitor: ProgressMonitor;
   completionHandler: CompletionHandler;
 } {
+  console.log('[DEBUG] initializeServicesAndEmitConfig: before ResourceManager');
   const resourceManager = new ResourceManager(bus, log);
+  console.log('[DEBUG] initializeServicesAndEmitConfig: after ResourceManager');
   const progressMonitor = new ProgressMonitor(bus, log);
+  console.log('[DEBUG] initializeServicesAndEmitConfig: after ProgressMonitor');
   const completionHandler = new CompletionHandler(bus, log);
+  console.log('[DEBUG] initializeServicesAndEmitConfig: after CompletionHandler');
 
-  log.info({ config: cliCfg }, 'Effective configuration assembled');
+  log.info({ config: cliCfg }, '[DEBUG] Effective configuration assembled');
+  console.log('[DEBUG] initializeServicesAndEmitConfig: before bus.emitTyped INIT_CONFIG');
   bus.emitTyped(BUS_EVENT_TYPE.INIT_CONFIG, { timestamp: Date.now(), config: cliCfg });
+  console.log('[DEBUG] initializeServicesAndEmitConfig: after bus.emitTyped INIT_CONFIG');
   return { resourceManager, progressMonitor, completionHandler };
 }
 
@@ -74,15 +80,21 @@ async function executeMainProcess({
   progressMonitor: ProgressMonitor;
   completionHandler: CompletionHandler;
 }): Promise<{ exitCode: number }> {
+  console.log('[DEBUG] executeMainProcess: before handleUserConfirmation');
   const confirmed = await handleUserConfirmation(flags, log);
+  console.log('[DEBUG] executeMainProcess: after handleUserConfirmation, confirmed =', confirmed);
   if (!confirmed) {
     progressMonitor.stop();
     completionHandler.stopListening();
+    console.log('[DEBUG] executeMainProcess: user not confirmed, exiting');
     return { exitCode: 0 }; // User cancelled
   }
 
+  console.log('[DEBUG] executeMainProcess: before initializeAndStartProgressTracking');
   initializeAndStartProgressTracking(progressMonitor, flags.spec);
-  
+  console.log('[DEBUG] executeMainProcess: after initializeAndStartProgressTracking');
+
+  console.log('[DEBUG] executeMainProcess: before startProcessing');
   startProcessing({
     spec: flags.spec,
     cliCfg,
@@ -90,8 +102,10 @@ async function executeMainProcess({
     eventBus: bus,
     log,
   });
+  console.log('[DEBUG] executeMainProcess: after startProcessing, before awaitCompletion');
 
   const exitCode = await completionHandler.awaitCompletion();
+  console.log('[DEBUG] executeMainProcess: after awaitCompletion, exitCode =', exitCode);
   progressMonitor.stop();
   return { exitCode };
 }

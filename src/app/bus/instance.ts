@@ -5,6 +5,7 @@
 import { TypedEventBus } from './typed-event-bus.js';
 import { setEventDispatcher } from '#shared/event-emitter.js';
 
+
 /**
  * The singleton instance of the event bus.
  * This is the central communication hub for the application.

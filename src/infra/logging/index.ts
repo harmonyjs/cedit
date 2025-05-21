@@ -66,5 +66,6 @@ export function getLogger(scope: string, config?: CliConfig): pino.Logger {
     }
     rootLogger = createRootLogger(config);
   }
-  return rootLogger.child({ scope });
+  const childLogger = rootLogger.child({ scope });
+  return childLogger;
 }

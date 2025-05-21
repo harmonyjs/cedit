@@ -114,7 +114,8 @@ import {
 } from '../src/ui/tui/domain-handlers/index.js';
 import {
   handleFinishSummaryListener,
-  handleFinishAbortListener
+  handleFinishAbortListener,
+  injectTuiDeps
 } from '../src/ui/tui/event-listeners/index.js';
 import {
   isTUIEnvironment,
@@ -124,11 +125,14 @@ import {
   confirmApplyChanges,
   startLLMProcessing,
   updateSpinnerWithEvent,
-  initTUI // Added initTUI
+  initTUI, // Added initTUI
+  getActiveSpinner, // Added for test setup
+  stopActiveSpinner // Added for test setup
 } from '../src/ui/tui/index.js';
 import { gatherUserInput } from '../src/ui/tui/user-input.js';
 import { bus } from '../src/app/bus/index.js'; // Removed unused imports BUS_EVENT_TYPE, BUS_NAMESPACE
 import * as initInfoModule from '../src/ui/tui/init-info/index.js'; // For spying
+import { getLogger } from '../src/infra/logging/index.js'; // Import getLogger
 
 // Clear mocks before each test
 beforeEach(() => {
@@ -318,6 +322,35 @@ describe('TUI Component Tests', () => {
   
   // Test the event listeners directly
   it('should handle FINISH_SUMMARY event correctly', () => {
+    // Set up spinner controls for the test
+    injectTuiDeps({
+      logger: getLogger('test', {
+        model: 'test-model',
+        anthropicApiKey: '',
+        defaults: {
+          dryRun: false,
+          maxTokens: 200000,
+          model: '',
+          retries: 2,
+          sleepBetweenRequestsMs: 500
+        },
+        dryRun: false,
+        log: { level: 'info', dir: '/tmp/logs' },
+        backup: { dir: '/tmp/backups', keepForDays: 0 },
+        maxTokens: 200000,
+        retries: 3,
+        sleepBetweenRequestsMs: 1000,
+        varsOverride: {}
+      }),
+      getActiveSpinner,
+      stopActiveSpinner,
+      dispatchDomainEvent: vi.fn(),
+      handleInitConfigEvent: vi.fn(),
+      getVersion: () => '0.1.0-test-mock',
+      fs: require('node:fs/promises'),
+      fsSync: require('node:fs')
+    });
+    
     const summaryPayload = {
       timestamp: Date.now(),
       stats: {
@@ -341,6 +374,35 @@ describe('TUI Component Tests', () => {
   });
   
   it('should handle FINISH_ABORT event correctly', () => {
+    // Set up spinner controls for the test (reuse from previous test)
+    injectTuiDeps({
+      logger: getLogger('test', {
+        model: 'test-model',
+        anthropicApiKey: '',
+        defaults: {
+          dryRun: false,
+          maxTokens: 200000,
+          model: '',
+          retries: 2,
+          sleepBetweenRequestsMs: 500
+        },
+        dryRun: false,
+        log: { level: 'info', dir: '/tmp/logs' },
+        backup: { dir: '/tmp/backups', keepForDays: 0 },
+        maxTokens: 200000,
+        retries: 3,
+        sleepBetweenRequestsMs: 1000,
+        varsOverride: {}
+      }),
+      getActiveSpinner,
+      stopActiveSpinner,
+      dispatchDomainEvent: vi.fn(),
+      handleInitConfigEvent: vi.fn(),
+      getVersion: () => '0.1.0-test-mock',
+      fs: require('node:fs/promises'),
+      fsSync: require('node:fs')
+    });
+    
     const abortPayload = {
       timestamp: Date.now(),
       reason: 'Test error',
@@ -385,6 +447,7 @@ describe('TUI Event Bus Integration Tests', () => {
   };
 
   beforeEach(() => {
+    initTUI(mockCliConfig); // Initialize TUI (which includes logger and event listeners) before each test
     cleanupTUI(); // Clears listeners from bus, important for these tests
     // vi.clearAllMocks() is already in the global beforeEach
   });

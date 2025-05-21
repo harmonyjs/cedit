@@ -21,6 +21,7 @@ export const LOG_LEVEL_TRACE = 10;
 const LOGFILE_DATE_LENGTH = 10;
 
 export function createLogFileStream(logDir?: string): fs.WriteStream | null {
+
   if (logDir === undefined || logDir === '') return null;
   if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
   const logfile = path.join(
@@ -95,6 +96,6 @@ export function parseLogChunk(chunk: unknown): Record<string, unknown> | null {
 }
 
 export function emitToEventBus(payload: EventBusLogPayload): void {
-  // Use the event dispatcher instead of accessing the bus directly
+  // No-op: recursion guard is now in TypedEventBus.emitTyped
   dispatchEvent(BUS_EVENT_TYPE_INFRA_LOG, payload);
 }
