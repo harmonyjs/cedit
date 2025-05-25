@@ -8,43 +8,71 @@ import { dispatchEvent } from '#shared/event-emitter.js';
  * These are used to avoid magic numbers and clarify intent.
  * @see https://getpino.io/#/docs/api?id=level-string
  */
-export const LOG_LEVEL_FATAL = 60;
-export const LOG_LEVEL_ERROR = 50;
-export const LOG_LEVEL_WARN = 40;
-export const LOG_LEVEL_INFO = 30;
-export const LOG_LEVEL_DEBUG = 20;
-export const LOG_LEVEL_TRACE = 10;
+export const LOG_LEVELS = {
+  FATAL: 60,
+  ERROR: 50,
+  WARN: 40,
+  INFO: 30,
+  DEBUG: 20,
+  TRACE: 10
+} as const;
 
 /**
  * Number of characters for the date prefix in log filenames (YYYY-MM-DD).
  */
 const LOGFILE_DATE_LENGTH = 10;
 
-export function createLogFileStream(logDir?: string): fs.WriteStream | null {
+/**
+ * The keys that should be excluded from the data field in the event bus payload
+ */
+const RESERVED_LOG_KEYS = ['msg', 'level', 'time', 'scope'];
 
-  if (logDir === undefined || logDir === '') return null;
-  if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
-  const logfile = path.join(
-    logDir,
-    new Date().toISOString().slice(0, LOGFILE_DATE_LENGTH) + '.log'
-  );
+/**
+ * Creates a write stream for the log file if a directory is provided.
+ * The filename is based on the current date.
+ *
+ * @param logDir - Directory to store log files
+ * @returns A WriteStream or null if no directory is provided
+ */
+export function createLogFileStream(logDir?: string): fs.WriteStream | null {
+  // Explicitly check for undefined, null, or empty string
+  if (logDir === undefined || logDir === null || logDir === '') {
+    return null;
+  }
+  
+  // Create the directory if it doesn't exist
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+  
+  // Create a log file named with the current date (YYYY-MM-DD.log)
+  const datePart = new Date().toISOString().slice(0, LOGFILE_DATE_LENGTH);
+  const logfile = path.join(logDir, `${datePart}.log`);
+  
   return fs.createWriteStream(logfile, { flags: 'a' });
 }
 
 /**
  * Maps a numeric Pino log level to the corresponding event bus log level string.
+ *
  * @param pinoLevel - Numeric log level (Pino convention)
  * @returns EventBusLogLevel string
  */
 export function mapPinoLevelToEventBusLevel(pinoLevel: number): EventBusLogLevel {
-  if (pinoLevel >= LOG_LEVEL_FATAL) return 'fatal';
-  if (pinoLevel >= LOG_LEVEL_ERROR) return 'error';
-  if (pinoLevel >= LOG_LEVEL_WARN) return 'warn';
-  if (pinoLevel >= LOG_LEVEL_INFO) return 'info';
-  if (pinoLevel >= LOG_LEVEL_DEBUG) return 'debug';
+  if (pinoLevel >= LOG_LEVELS.FATAL) return 'fatal';
+  if (pinoLevel >= LOG_LEVELS.ERROR) return 'error';
+  if (pinoLevel >= LOG_LEVELS.WARN) return 'warn';
+  if (pinoLevel >= LOG_LEVELS.INFO) return 'info';
+  if (pinoLevel >= LOG_LEVELS.DEBUG) return 'debug';
   return 'trace';
 }
 
+/**
+ * Processes a log event and converts it to the event bus payload format
+ *
+ * @param logData - The raw log data from Pino
+ * @returns Formatted payload for the event bus
+ */
 export function processLogEvent(logData: Record<string, unknown>): EventBusLogPayload {
   if (typeof logData !== 'object' || logData === null) {
     return {
@@ -55,22 +83,30 @@ export function processLogEvent(logData: Record<string, unknown>): EventBusLogPa
       data: {}
     };
   }
+  
+  // Get the numeric level from Pino and convert it to our level format
   const pinoLevelRaw = logData['level'];
-  // Use LOG_LEVEL_INFO constant instead of magic number 30
-  const pinoLevel = typeof pinoLevelRaw === 'number' ? pinoLevelRaw : LOG_LEVEL_INFO;
-  const level: EventBusLogLevel = mapPinoLevelToEventBusLevel(pinoLevel);
+  const pinoLevel = typeof pinoLevelRaw === 'number' ? pinoLevelRaw : LOG_LEVELS.INFO;
+  const level = mapPinoLevelToEventBusLevel(pinoLevel);
+  
+  // Extract the message and scope
+  const message = typeof logData['msg'] === 'string' ? logData['msg'] : '';
+  const scope = typeof logData['scope'] === 'string' ? logData['scope'] : 'app';
+  
+  // Extract all other fields that aren't reserved as data
   const data: Record<string, unknown> = {};
   for (const key in logData) {
-    if (!['msg', 'level', 'time', 'scope'].includes(key)) {
+    if (!RESERVED_LOG_KEYS.includes(key)) {
       data[key] = logData[key];
     }
   }
+  
   return {
     timestamp: Date.now(),
-    message: typeof logData['msg'] === 'string' ? logData['msg'] : '',
+    message,
     level,
-    scope: typeof logData['scope'] === 'string' ? logData['scope'] : 'app',
-    data
+    scope,
+    data: Object.keys(data).length > 0 ? data : {}
   };
 }
 
@@ -81,7 +117,9 @@ export function processLogEvent(logData: Record<string, unknown>): EventBusLogPa
  */
 export function parseLogChunk(chunk: unknown): Record<string, unknown> | null {
   try {
-    const obj: unknown = JSON.parse(String(chunk));
+    const str = typeof chunk === 'string' ? chunk : String(chunk);
+    const obj: unknown = JSON.parse(str);
+
     if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
       // Type assertion is necessary here because JSON.parse returns unknown,
       // and we have checked for object and non-null. Further runtime validation would be overkill.
@@ -95,6 +133,11 @@ export function parseLogChunk(chunk: unknown): Record<string, unknown> | null {
   }
 }
 
+/**
+ * Dispatches a log event to the event bus
+ *
+ * @param payload - The log payload to emit
+ */
 export function emitToEventBus(payload: EventBusLogPayload): void {
   // No-op: recursion guard is now in TypedEventBus.emitTyped
   dispatchEvent(BUS_EVENT_TYPE_INFRA_LOG, payload);

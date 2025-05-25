@@ -16,35 +16,41 @@ import type { CliConfig } from '../../app/model/index.js';
 import { createEventBusLogger } from './transport.js';
 
 /**
+ * Environment variable names used to determine logging behavior
+ */
+const ENV = {
+  TUI_DISABLED: 'TUI_DISABLED',
+  CI: 'CI'
+};
+
+/**
  * Root (singleton) pino logger. Created once per process.
  * Do NOT export it directly – always use getLogger().
  */
 let rootLogger: pino.Logger | null = null;
 
 /**
+ * Determines if we're running in a non-interactive environment (CI, non-TTY, or TUI explicitly disabled)
+ */
+function isNonInteractiveEnvironment(): boolean {
+  return process.env[ENV.TUI_DISABLED] === 'true' || 
+         !process.stdout.isTTY ||
+         process.env[ENV.CI] === 'true';
+}
+
+/**
  * Creates the root logger with the given configuration.
  * This is called only once per process.
  */
 function createRootLogger(config: CliConfig): pino.Logger {
-  // Determine if we're in a CLI-only environment by checking the TUI_DISABLED env var
-  const isTuiDisabled = process.env['TUI_DISABLED'] === 'true' || 
-                       !process.stdout.isTTY ||
-                       process.env['CI'] === 'true';
+  const shouldUseFileOutput = isNonInteractiveEnvironment();
   
-  // If TUI is disabled, use standard Pino logger with file output
-  if (isTuiDisabled) {
-    return createEventBusLogger({
-      level: config.log.level,
-      logDir: config.log.dir,
-      eventBusOnly: false // Write to both event bus and file
-    });
-  }
-
-  // In TUI mode, use the event bus transport only
   return createEventBusLogger({
     level: config.log.level,
     logDir: config.log.dir,
-    eventBusOnly: true // Only emit to event bus, no direct stdout output
+    // In non-interactive mode, write to both event bus and file
+    // In interactive mode, only emit to event bus
+    eventBusOnly: !shouldUseFileOutput
   });
 }
 
