@@ -274,4 +274,14 @@ Automatic resolution of routine errors accelerates development, reduces conversa
     </rationale>
     <tags>autonomy,lint,typecheck,tests,maintenance</tags>
   </rule>
+  <rule>
+    <name>Thinking Tool</name>
+    <description>
+      Invoke the Thinking Tool on every new user instruction to analyse the task and draft a solution.
+    </description>
+    <rationale>
+      Ensures structured reasoning, surfaces ambiguities, and improves answer accuracy and repeatability.
+    </rationale>
+    <tags>thinking tool, reasoning, analysis, copilot</tags>
+  </rule>
 </rules>

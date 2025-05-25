@@ -38,6 +38,46 @@ const STYLE_RULES = {
   'require-await': 'error',
   'class-methods-use-this': 'error', // Added
   'consistent-return': 'error', // Added
+  // Centralize terminal output through logging system
+  'no-restricted-properties': ['error',
+    // Prohibit console methods
+    {
+      object: 'console',
+      property: 'log',
+      message: 'Use logger.info() from getLogger() instead of console.log()'
+    },
+    {
+      object: 'console',
+      property: 'error',
+      message: 'Use logger.error() from getLogger() instead of console.error()'
+    },
+    {
+      object: 'console',
+      property: 'warn',
+      message: 'Use logger.warn() from getLogger() instead of console.warn()'
+    },
+    {
+      object: 'console',
+      property: 'info',
+      message: 'Use logger.info() from getLogger() instead of console.info()'
+    },
+    {
+      object: 'console',
+      property: 'debug',
+      message: 'Use logger.debug() from getLogger() instead of console.debug()'
+    },
+    // Prohibit direct stream writes
+    {
+      object: 'process.stdout',
+      property: 'write',
+      message: 'Use logger from getLogger() instead of process.stdout.write()'
+    },
+    {
+      object: 'process.stderr',
+      property: 'write',
+      message: 'Use logger from getLogger() instead of process.stderr.write()'
+    }
+  ],
 };
 
 const TS_SPECIFIC_RULES = {
@@ -175,4 +215,33 @@ export default defineConfig([
       ...TS_SPECIFIC_RULES, // Apply TS_SPECIFIC_RULES
     }
   }))),
+
+  // 4️⃣ Special rules for test files and tools - allow console usage
+  {
+    files: [
+      'tests/**/*.ts', 
+      'tests/**/*.js', 
+      '**/*.test.ts', 
+      '**/*.spec.ts',
+      'tools/**/*.mjs',
+      'tools/**/*.js',
+      'tools/**/*.ts'
+    ],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        // Don't use project for tests and tools - they may not be in tsconfig.json
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+      globals: NODE_GLOBALS,
+    },
+    rules: {
+      'no-restricted-properties': 'off', // Allow console usage in tests and tools
+      '@typescript-eslint/no-unsafe-member-access': 'off', // Relax for tests
+      '@typescript-eslint/no-unsafe-assignment': 'off', // Relax for tests
+      '@typescript-eslint/no-unsafe-call': 'off', // Relax for tests
+      '@typescript-eslint/no-unsafe-return': 'off', // Relax for tests
+    },
+  },
 ]);

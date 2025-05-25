@@ -80,7 +80,11 @@ export async function handleConfirmation( // Renamed function
       success: true,
       message: 'Auto-confirmed due to non-interactive terminal',
     });
+    // Critical warning for non-interactive environments where TUI cannot display warnings
+    // eslint-disable-next-line no-restricted-properties
     console.warn(chalk.yellow('Warning: cedit is running in a non-interactive terminal without the --yes flag.'));
+    // Critical warning for non-interactive environments where TUI cannot display warnings
+    // eslint-disable-next-line no-restricted-properties
     console.warn(chalk.yellow('For better control, run in an interactive terminal or use --yes to explicitly bypass confirmation.'));
     return true;
   } else {

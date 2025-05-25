@@ -186,9 +186,9 @@ export async function run(specPath: string, cfg: CliConfig): Promise<void> {
   let finalSpec: Spec;
   const startTime = Date.now();
   try {
-    console.log('[DEBUG] Runner: loading spec');
+    log.debug('Runner: loading spec');
     const spec = await loadSpec(specPath);
-    console.log('[DEBUG] Runner: spec loaded');
+    log.debug('Runner: spec loaded');
     finalSpec = interpolate(spec, cfg);
     log.info('[DEBUG] Spec variables interpolated');
     const llm = createLLM(cfg);

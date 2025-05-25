@@ -15,6 +15,8 @@ runCli(process.argv, run, getLogger)
   })
   .catch((err: unknown) => {
     const message = err instanceof Error ? err.message : String(err);
+    // Critical application-level error before logger initialization - console is required
+    // eslint-disable-next-line no-restricted-properties
     console.error(`\nCritical Error: ${message}`);
     process.exit(1);
   });

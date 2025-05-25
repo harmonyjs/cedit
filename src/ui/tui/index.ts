@@ -159,6 +159,8 @@ export function getVersion(): string {
     if (typeof tuiLoggerInternal !== 'undefined') {
       tuiLoggerInternal.error({ error }, 'Failed to read version');
     } else {
+      // Fallback error logging when logger is not yet initialized
+      // eslint-disable-next-line no-restricted-properties
       console.error('Failed to read version, logger not init', error);
     }
     return '0.0.0';

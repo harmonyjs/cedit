@@ -400,7 +400,9 @@ vi.mock('../src/ui/cli/execution/flow.js', () => ({
 const mockOrchestrateExecution = orchestrateExecution as Mock<typeof orchestrateExecution>;
 
 describe('runCli', () => {
+  // eslint-disable-next-line no-unused-vars -- Mock function type definition
   let mockCoreRunFn: Mock<(spec: string, cfg: CliConfig) => Promise<void>>;
+  // eslint-disable-next-line no-unused-vars -- Mock function type definition
   let mockGetLoggerFn: Mock<(scope: string, cfg: CliConfig) => Logger>;
   let mockLogger: Partial<Logger>; // Mock individual methods as needed
   let mockResourceManagerInstance: Partial<ResourceManager>; // Mock individual methods as needed

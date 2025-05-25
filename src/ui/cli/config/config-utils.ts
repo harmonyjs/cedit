@@ -12,6 +12,11 @@ import {
   resolveConfigPath as resolveConfigPathHelper,
   initializeWithDefaults 
 } from './config-utils-helpers.js';
+import {
+  getValueFromCli,
+  getValueFromEnv,
+  getValueFromFile
+} from './config-builder-helpers.js';
 
 // Re-export helpers
 export { getNestedValue, resolveConfigPathHelper as resolveConfigPath };
@@ -35,6 +40,8 @@ export class ConfigBuilder {
     
     // Log the loaded model value from the file config, if present
     if (this.fileCfgFull.model !== undefined && this.fileCfgFull.model !== null && this.fileCfgFull.model !== '') {
+      // Configuration loading happens before logger is available for debug output during development
+      // eslint-disable-next-line no-restricted-properties
       console.log(`Config file contains model: "${this.fileCfgFull.model}"`);
     }
   }
@@ -60,75 +67,6 @@ export class ConfigBuilder {
     }
     
     return result as TSection;
-  }
-
-  // Instance methods (non-static)
-  /**
-   * Get a value from command-line flags
-   */
-  private getValueFromCli<TSection extends object, K extends keyof TSection>(
-    metaValue: ConfigOptionValue<TSection, K>
-  ): TSection[K] | undefined {
-    if (typeof metaValue.flagKey === 'string' && 
-        metaValue.flagKey in this.flags && 
-        this.flags[metaValue.flagKey] !== undefined) {
-      return metaValue.parser(this.flags[metaValue.flagKey]);
-    }
-    return undefined;
-  }
-
-  /**
-   * Get a value from the file configuration
-   */
-  private getValueFromFile<TSection extends object, K extends keyof TSection>(
-    metaValue: ConfigOptionValue<TSection, K>,
-    useDefaultPath: boolean
-  ): TSection[K] | undefined {
-    // Get path config and early return if not defined
-    const pathConfig = useDefaultPath ? metaValue.fileDefaultPath : metaValue.fileConfigPath;
-    if (pathConfig === undefined) return undefined;
-
-    // Skip if using default path for defaults section properties
-    if (useDefaultPath && metaValue.isDefaultsSectionProperty === true) {
-      return undefined;
-    }
-
-    // Get and parse the value
-    return this.getAndParseFileValue(metaValue, pathConfig);
-  }
-
-  /**
-   * Helper to get and parse a value from file configuration
-   */
-  private getAndParseFileValue<TSection extends object, K extends keyof TSection>(
-    metaValue: ConfigOptionValue<TSection, K>,
-    pathConfig: string | ((fileCfg: Partial<CliConfig>) => unknown)
-  ): TSection[K] | undefined {
-    const valFromFile = typeof pathConfig === 'function'
-      ? pathConfig(this.fileCfgFull)
-      : getNestedValue(this.fileCfgFull, pathConfig);
-      
-    const keyString = String(metaValue.key);
-    const isModelProperty = keyString === 'model';
-    
-    // Log raw value for model
-    if (isModelProperty) {
-      const pathConfigStr = typeof pathConfig === 'function' ? '[function]' : pathConfig;
-      console.log(`Value from file (${pathConfigStr}): `, valFromFile);
-    }
-    
-    // Parse and return the value if defined
-    if (valFromFile !== undefined) {
-      const parsedValue = metaValue.parser(valFromFile);
-      
-      // Log parsed value for model
-      if (isModelProperty && parsedValue !== undefined) {
-        console.log(`Parsed value for model: "${safeToString(parsedValue)}"`);
-      }
-      
-      return parsedValue;
-    }
-    return undefined;
   }
 
   /**
@@ -170,6 +108,8 @@ export class ConfigBuilder {
     
     // Skip if defaults aren't an object
     if (typeof nestedDefaults !== 'object' || nestedDefaults === null) {
+      // Configuration loading happens before logger is available for debug output during development
+      // eslint-disable-next-line no-restricted-properties
       console.warn(chalk.yellow(`Warning: Default value for nested key '${keyString}' is not an object in hardcoded defaults. Skipping.`));
       
       if (sectionDefaults[key] !== undefined) {
@@ -199,6 +139,8 @@ export class ConfigBuilder {
     // Log the resolved model value
     const keyString = String(key);
     if (keyString === 'model' && resolvedValue !== undefined) {
+      // Configuration loading happens before logger is available for debug output during development
+      // eslint-disable-next-line no-restricted-properties
       console.log(`Resolved model value: "${safeToString(resolvedValue)}"`);
     }
     
@@ -219,6 +161,8 @@ export class ConfigBuilder {
     const isModelProperty = String(metaValue.key) === 'model';
     
     if (isModelProperty) {
+      // Configuration loading happens before logger is available for debug output during development
+      // eslint-disable-next-line no-restricted-properties
       console.log(`Resolving value for model property...`);
     }
 
@@ -234,16 +178,24 @@ export class ConfigBuilder {
     isModelProperty: boolean
   ): TSection[K] | undefined {
     // Try CLI
-    const cliValue = this.getValueFromCli(metaValue);
+    const cliValue = getValueFromCli(this.flags, metaValue);
     if (cliValue !== undefined) {
-      if (isModelProperty) console.log(`Using CLI value for model: "${safeToString(cliValue)}"`);
+      if (isModelProperty) {
+        // Configuration loading happens before logger is available for debug output during development
+        // eslint-disable-next-line no-restricted-properties
+        console.log(`Using CLI value for model: "${safeToString(cliValue)}"`);
+      }
       return cliValue;
     }
 
     // Try ENV 
-    const envValue = ConfigBuilder.getValueFromEnv(metaValue);
+    const envValue = getValueFromEnv(metaValue);
     if (envValue !== undefined) {
-      if (isModelProperty) console.log(`Using ENV value for model: "${safeToString(envValue)}"`);
+      if (isModelProperty) {
+        // Configuration loading happens before logger is available for debug output during development
+        // eslint-disable-next-line no-restricted-properties
+        console.log(`Using ENV value for model: "${safeToString(envValue)}"`);
+      }
       return envValue;
     }
 
@@ -259,40 +211,34 @@ export class ConfigBuilder {
     isModelProperty: boolean
   ): TSection[K] | undefined {
     // Try config file
-    const configFileValue = this.getValueFromFile(metaValue, false);
+    const configFileValue = getValueFromFile(this.fileCfgFull, metaValue, false);
     if (configFileValue !== undefined) {
-      if (isModelProperty) console.log(`Using file config value for model: "${safeToString(configFileValue)}"`);
+      if (isModelProperty) {
+        // Configuration loading happens before logger is available for debug output during development
+        // eslint-disable-next-line no-restricted-properties
+        console.log(`Using file config value for model: "${safeToString(configFileValue)}"`);
+      }
       return configFileValue;
     }
 
     // Try default file path
-    const defaultFileValue = this.getValueFromFile(metaValue, true);
+    const defaultFileValue = getValueFromFile(this.fileCfgFull, metaValue, true);
     if (defaultFileValue !== undefined) {
-      if (isModelProperty) console.log(`Using default file config value for model: "${safeToString(defaultFileValue)}"`);
+      if (isModelProperty) {
+        // Configuration loading happens before logger is available for debug output during development
+        // eslint-disable-next-line no-restricted-properties
+        console.log(`Using default file config value for model: "${safeToString(defaultFileValue)}"`);
+      }
       return defaultFileValue;
     }
 
     // Use hardcoded default
     if (isModelProperty && hardcodedDefaultForKey !== undefined) {
+      // Configuration loading happens before logger is available for debug output during development
+      // eslint-disable-next-line no-restricted-properties
       console.log(`Using hardcoded default for model: "${safeToString(hardcodedDefaultForKey)}"`);
     }
     
     return hardcodedDefaultForKey;
-  }
-
-  // Static methods
-  /**
-   * Get a value from environment variables
-   */
-  private static getValueFromEnv<TSection extends object, K extends keyof TSection>(
-    metaValue: ConfigOptionValue<TSection, K>
-  ): TSection[K] | undefined {
-    if (typeof metaValue.envVarKey === 'string' && metaValue.envVarKey !== '') {
-      const envValue = process.env[metaValue.envVarKey];
-      if (envValue !== undefined) {
-        return metaValue.parser(envValue);
-      }
-    }
-    return undefined;
   }
 }

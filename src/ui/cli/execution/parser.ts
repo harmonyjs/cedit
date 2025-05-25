@@ -54,6 +54,8 @@ function getRequiredBooleanOpt(value: unknown): boolean {
  */
 function validateCriticalFlags(flags: CliFlags, program: Command): void {
   if (flags.spec === '' || flags.spec === undefined) {
+    // CLI parsing error before logger initialization - console is required for user feedback
+    // eslint-disable-next-line no-restricted-properties
     console.error(chalk.red('Error: Spec file path is required.'));
     program.help(); // This is the crucial part that needs the program instance
     // unreachable throw removed for TS7027
@@ -90,6 +92,8 @@ export async function parseArguments( // Renamed function
   // Validate that we're only using keys from our registry
   for (const key of Object.keys(opts)) {
     if (!isValidCommanderKey(key)) {
+      // CLI parsing warning before logger initialization - console is required for user feedback
+      // eslint-disable-next-line no-restricted-properties
       console.warn(chalk.yellow(`Warning: Unknown CLI option '${key}' not in registry`));
     }
   }

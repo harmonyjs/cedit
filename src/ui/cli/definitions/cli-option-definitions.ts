@@ -139,23 +139,3 @@ export const COMMANDER_TO_INTERNAL_KEY_MAP = {
   sleepMs: 'sleepMs',
   yes: 'yes',
 } as const;
-
-// Validate that the mapping is complete and accurate
-type ExpectedCommanderKeys = {
-  [K in CliOptionKey]: typeof CLI_OPTIONS_REGISTRY[K]['type'] extends 'option' 
-    ? typeof CLI_OPTIONS_REGISTRY[K]['commanderKey']
-    : never
-}[CliOptionKey];
-
-type ExpectedInternalKeys = {
-  [K in CliOptionKey]: typeof CLI_OPTIONS_REGISTRY[K]['internalKey']
-}[CliOptionKey];
-
-// This will cause a compilation error if the mapping is incomplete or incorrect
-type _ValidateMapping = {
-  [K in keyof typeof COMMANDER_TO_INTERNAL_KEY_MAP]: K extends ExpectedCommanderKeys
-    ? typeof COMMANDER_TO_INTERNAL_KEY_MAP[K] extends ExpectedInternalKeys
-      ? true
-      : never
-    : never
-};

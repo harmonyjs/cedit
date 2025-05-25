@@ -78,14 +78,14 @@ export function setupActualEventListeners(bus: typeof BusInstance): void {
   // Listen for init events
    
   bus.onTyped(BUS_EVENT_TYPE.INIT_CONFIG, (payload: InitConfigEvent) => {
-    console.log('[DEBUG] TUI event-listeners: INIT_CONFIG received');
+    loggerInstance.debug('TUI event-listeners: INIT_CONFIG received');
     handleInitConfigEventFn(payload, {
       logger: loggerInstance,
       getVersion: getVersionInstance,
       fs: fsInstance,
       fsSync: fsSyncInstance
     }).then(() => {
-      console.log('[DEBUG] TUI event-listeners: handleInitConfigEventFn resolved');
+      loggerInstance.debug('TUI event-listeners: handleInitConfigEventFn resolved');
     }).catch((error: unknown) => {
       loggerInstance.error({ error: error instanceof Error ? error.message : String(error) }, 'Error in handleInitConfigEvent');
       bus.emitTyped(BUS_EVENT_TYPE.FINISH_ABORT, {

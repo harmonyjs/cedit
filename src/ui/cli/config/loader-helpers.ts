@@ -126,6 +126,8 @@ export function mergeVarsOverrideSection(flags: CliFlags): Record<string, string
         acc[parts[0].trim()] = parts[1].trim();
       }
     } else {
+      // Configuration parsing happens before logger is available for CLI argument validation
+      // eslint-disable-next-line no-restricted-properties
       console.warn(chalk.yellow(`Ignoring invalid --var format: "${pair}"`));
     }
     return acc;

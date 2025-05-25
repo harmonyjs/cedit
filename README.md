@@ -151,6 +151,35 @@ This architecture ensures:
 
 ---
 
-## 📜 License
+## � Development Guidelines
+
+### Terminal Output Standards
+
+This project enforces centralized terminal output through the logging system. **All output must use `getLogger()` instead of direct `console.*` or `process.std*.write()` calls.**
+
+Key principles:
+- ✅ Use `logger.info()`, `logger.error()`, `logger.warn()`, `logger.debug()`
+- ❌ Never use `console.log()`, `console.error()`, etc.
+- 🔗 Logger output automatically integrates with TUI display
+- 📋 ESLint rules enforce these standards
+
+For detailed guidelines, exceptions, and examples, see: [**Terminal Output Guidelines**](src/ui/tui/TERMINAL_OUTPUT.md)
+
+### Development Workflow
+
+1. **Code Quality Gates**: All changes must pass:
+   ```bash
+   npm run lint      # ESLint validation
+   npm run typecheck # TypeScript compilation
+   npm run test      # Full test suite
+   npm run depcheck  # Dependency analysis
+   ```
+
+2. **Architecture Compliance**: Follow the layered architecture and dependency rules
+3. **Documentation**: Keep code comments and docs synchronized with changes
+
+---
+
+## �📜 License
 
 MIT © 2025 Andrey Vavilov

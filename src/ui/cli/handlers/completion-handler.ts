@@ -42,24 +42,31 @@ export class CompletionHandler {
         const { totalEdits, filesEdited, filesCreated } = payload.stats;
         const { added, removed, changed } = totalEdits;
 
-        // Log to console, not logger, as this is user-facing summary
-        console.log(
-          `\n${chalk.green('✔ Edits Applied:')} ${chalk.greenBright(`+${added}`)} added, ${chalk.redBright(
-            `-${removed}`,
-          )} removed, ${chalk.yellowBright(`~${changed}`)} changed.`,
-        );
-        console.log(`${chalk.blue('ℹ Files:')} ${filesEdited} edited, ${filesCreated} created.`);
-        /**
-         * Number of milliseconds in one second.
-         * Used to convert duration from ms to seconds for display.
-         */
-        const MS_PER_SECOND = 1000;
-        /**
-         * Number of decimal places to show for duration seconds.
-         */
-        const DURATION_DECIMALS = 2;
-        console.log(`${chalk.gray('⏱ Duration:')} ${(payload.duration / MS_PER_SECOND).toFixed(DURATION_DECIMALS)}s`);
-        console.log(chalk.green('✨ All done! ✨'));
+        // Summary is already displayed in TUI - only log to console in non-TTY environments
+        if (!process.stdout.isTTY) {
+          // Console output is necessary for non-TTY environments where TUI is not available
+          // eslint-disable-next-line no-restricted-properties
+          console.log(
+            `\n${chalk.green('✔ Edits Applied:')} ${chalk.greenBright(`+${added}`)} added, ${chalk.redBright(
+              `-${removed}`,
+            )} removed, ${chalk.yellowBright(`~${changed}`)} changed.`,
+          );
+          // eslint-disable-next-line no-restricted-properties
+          console.log(`${chalk.blue('ℹ Files:')} ${filesEdited} edited, ${filesCreated} created.`);
+          /**
+           * Number of milliseconds in one second.
+           * Used to convert duration from ms to seconds for display.
+           */
+          const MS_PER_SECOND = 1000;
+          /**
+           * Number of decimal places to show for duration seconds.
+           */
+          const DURATION_DECIMALS = 2;
+          // eslint-disable-next-line no-restricted-properties
+          console.log(`${chalk.gray('⏱ Duration:')} ${(payload.duration / MS_PER_SECOND).toFixed(DURATION_DECIMALS)}s`);
+          // eslint-disable-next-line no-restricted-properties
+          console.log(chalk.green('✨ All done! ✨'));
+        }
         
         this.stopListening();
         resolve(EXIT_CODE_SUCCESS); // Success
@@ -68,8 +75,11 @@ export class CompletionHandler {
       this.abortHandler = (payload: FinishAbortEvent): void => {
         // Log specific message if it's not a core process failure (which is logged elsewhere by other handlers)
         if (!payload.reason.startsWith('Core process failed:')) {
-          // Log to console, not logger, as this is user-facing
-          console.log(chalk.red(`\n✖ Aborted: ${payload.reason}`));
+          // Console output is necessary for non-TTY environments where TUI is not available
+          if (!process.stdout.isTTY) {
+            // eslint-disable-next-line no-restricted-properties
+            console.log(chalk.red(`\n✖ Aborted: ${payload.reason}`));
+          }
         }
         this.stopListening();
         resolve(EXIT_CODE_FAILURE); // Failure/Abort

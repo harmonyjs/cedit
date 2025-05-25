@@ -82,8 +82,12 @@ async function loadIndividualConfigFile(filePath: string): Promise<PartialCliCon
     return validationResult.data;
   } catch (error: unknown) {
     if (isNonEnoentError(error)) {
+      // Configuration loading happens before logger is available for file I/O error reporting
+      // eslint-disable-next-line no-restricted-properties
       console.warn(chalk.yellow(`Warning: Could not load or parse config file at ${filePath}: ${(error as Error).message}`));
     } else if (!isEnoentError(error)) {
+      // Configuration loading happens before logger is available for file I/O error reporting
+      // eslint-disable-next-line no-restricted-properties
       console.warn(chalk.yellow(`Warning: An unexpected error occurred while processing ${filePath}.`));
     }
     return null;
@@ -130,8 +134,12 @@ export async function loadConfiguration(flags: CliFlags): Promise<CliConfig> {
   const fileCfg = await loadConfigFile(flags.configPath);
   if (Object.keys(fileCfg).length === 0) {
     if (flags.configPath !== undefined && flags.configPath !== '') {
+      // Configuration loading happens before logger is available for informational messages
+      // eslint-disable-next-line no-restricted-properties
       console.log(chalk.dim(`No config loaded from ${flags.configPath}, using defaults and CLI flags.`));
     } else {
+      // Configuration loading happens before logger is available for informational messages
+      // eslint-disable-next-line no-restricted-properties
       console.log(chalk.dim('No config file found, using defaults and CLI flags.'));
     }
   }

@@ -1,7 +1,6 @@
 /**
  * Monitors and displays CLI progress based on domain events.
  */
-import chalk from 'chalk';
 import type { Logger } from 'pino';
 import { BUS_EVENT_TYPE, BUS_NAMESPACE, type bus } from '../../../app/bus/index.js';
 
@@ -65,13 +64,8 @@ export class ProgressMonitor {
     this.busInstance.onNamespace(BUS_NAMESPACE.DOMAIN, this.domainEventListener);
 
     this.progressIntervalId = setInterval(() => {
-      const progress = this.getProgress();
-      // Log to console, not logger, as this is user-facing progress
-      console.log(
-        `Progress: ${chalk.yellow(progress.viewed)} files viewed, ${chalk.green(
-          progress.edited,
-        )} edited, ${chalk.red(progress.errors)} errors`,
-      );
+      // Progress is already displayed in real-time through TUI event listeners
+      // No need for console output here as it would duplicate the TUI display
     }, intervalMs);
     this.isMonitoring = true;
   }

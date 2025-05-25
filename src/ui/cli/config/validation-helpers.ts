@@ -21,8 +21,12 @@ export function isValidationFailure(result: unknown): result is { success: false
  * Logs validation issues to the console.
  */
 export function logValidationIssues(error: ZodError, filePath: string): void {
+  // Configuration validation happens before logger is available for error reporting
+  // eslint-disable-next-line no-restricted-properties
   console.warn(chalk.yellow(`Warning: Configuration file at ${filePath} has validation errors:`));
   error.issues.forEach((issue: ZodIssue) => {
+    // Configuration validation happens before logger is available for error reporting
+    // eslint-disable-next-line no-restricted-properties
     console.warn(chalk.yellow(`  - Path: ${issue.path.join('.')}, Message: ${issue.message}`));
   });
 }

@@ -31,7 +31,7 @@ vi.mock('@clack/prompts', () => ({
 
 // Mock runner function and emit events on the bus
 // These mocks are defined once and cleared in beforeEach
-const runMock = vi.fn().mockImplementation(async (_specPath, _cfg) => {
+const runMock = vi.fn().mockImplementation(async () => {
   // Import bus here to avoid circular dependency
   const { bus, BUS_EVENT_TYPE } = await import('../src/app/bus/index.js');
   
@@ -87,7 +87,7 @@ describe('CLI Config Loading', () => {
     vi.clearAllMocks(); 
 
     // Explicitly reset mock implementations to ensure they are fresh for each test
-    runMock.mockImplementation(async (_specPath, _cfg) => {
+    runMock.mockImplementation(async () => {
       const { bus, BUS_EVENT_TYPE } = await import('../src/app/bus/index.js');
       bus.emitTyped(BUS_EVENT_TYPE.FINISH_SUMMARY, {
         timestamp: Date.now(),
@@ -378,7 +378,7 @@ describe('CLI Config Loading', () => {
         [path.join(os.tmpdir(), 'cedit', 'backups')]: {}
       });
       
-      runMock.mockImplementationOnce(async (_specPath, _cfg) => {
+      runMock.mockImplementationOnce(async () => {
         const { bus, BUS_EVENT_TYPE } = await import('../src/app/bus/index.js');
         bus.emitTyped(BUS_EVENT_TYPE.DOMAIN_ERROR, {
           timestamp: Date.now(),

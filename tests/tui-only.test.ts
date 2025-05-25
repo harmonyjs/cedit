@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeAll, vi, beforeEach } from 'vitest';
 import type { CliConfig, DomainEvent } from '../src/app/model/index.js';
-import { BUS_EVENT_TYPE, BUS_NAMESPACE, type FinishAbortEvent, type FinishSummaryEvent } from '../src/app/bus/index.js';
+import { BUS_EVENT_TYPE, BUS_NAMESPACE } from '../src/app/bus/index.js';
 
 // Mock node:fs with proper default export
 vi.mock('node:fs', () => {
@@ -131,7 +131,6 @@ import {
 } from '../src/ui/tui/index.js';
 import { gatherUserInput } from '../src/ui/tui/user-input.js';
 import { bus } from '../src/app/bus/index.js'; // Removed unused imports BUS_EVENT_TYPE, BUS_NAMESPACE
-import * as initInfoModule from '../src/ui/tui/init-info/index.js'; // For spying
 import { getLogger } from '../src/infra/logging/index.js'; // Import getLogger
 
 // Clear mocks before each test
@@ -188,8 +187,10 @@ describe('TUI Component Tests', () => {
   it('should gather user input', async () => {
     // const { gatherUserInput } = require('../src/ui/tui/user-input.js'); // Removed
     // Patch the mock to allow .mockResolvedValueOnce
-    const textMock = clack.text as unknown as { mockResolvedValueOnce: (v: any) => void };
-    const selectMock = clack.select as unknown as { mockResolvedValueOnce: (v: any) => void };
+    // eslint-disable-next-line no-unused-vars -- Mock function type definition
+    const textMock = clack.text as unknown as { mockResolvedValueOnce: (arg: any) => void };
+    // eslint-disable-next-line no-unused-vars -- Mock function type definition  
+    const selectMock = clack.select as unknown as { mockResolvedValueOnce: (arg: any) => void };
     textMock.mockResolvedValueOnce('spec.yml');
     textMock.mockResolvedValueOnce('key=value');
     textMock.mockResolvedValueOnce('');

@@ -18,6 +18,8 @@ function handleCriticalError(err: unknown, log?: Logger): void {
   const errorMessage = err instanceof Error ? err.message : String(err);
   // Avoid double logging for spec file path error, as cli-parser now handles its specific error message.
   if (errorMessage !== 'Spec file path is required.' && !errorMessage.startsWith('Missing required argument: spec')) {
+    // Critical CLI error before full logger setup - console is required for user feedback
+    // eslint-disable-next-line no-restricted-properties
     console.error(chalk.red(`Critical CLI error: ${errorMessage}`));
   }
   const errorStack = err instanceof Error ? err.stack : undefined;
@@ -25,6 +27,8 @@ function handleCriticalError(err: unknown, log?: Logger): void {
   if (log) {
     log.error({ error: errorMessage, stack: errorStack }, 'Critical CLI execution failed');
   } else if (errorStack !== undefined && errorMessage !== 'Spec file path is required.' && !errorMessage.startsWith('Missing required argument: spec')) {
+    // Critical CLI stack trace output when logger is not available
+    // eslint-disable-next-line no-restricted-properties
     console.error(chalk.dim(errorStack));
   }
 }

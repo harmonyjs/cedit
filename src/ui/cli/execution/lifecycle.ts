@@ -20,9 +20,8 @@ export async function initializeState( // Renamed function
 ): Promise<{ flags: CliFlags; cliCfg: CliConfig; log: Logger }> {
   const { flags } = await parseArguments(argv); // Adjusted function name
   const cliCfg = await loadConfiguration(flags);
-  console.log('[DEBUG] Before getLogger in initializeState');
   const log = getLoggerFn('cli', cliCfg);
-  console.log('[DEBUG] After getLogger in initializeState');
+  log.debug('State initialization completed');
   return { flags, cliCfg, log };
 }
 
