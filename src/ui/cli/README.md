@@ -1,23 +1,79 @@
 # CLI Module Architecture (src/ui/cli)
 
-This document outlines the architecture of the `ui/cli` module for the `cedit` application. This module is responsible for providing a command-line interface to interact with the core application logic.
+This document outlines the architecture of the `ui/cli` module for the `cedit` application. This module provides a **type-safe, centralized command-line interface system** that prevents CLI argument mismatches through compile-time safety.
 
 ## 1. Overview
 
 The CLI module handles:
-- Parsing command-line arguments and options.
-- Loading and validating configuration from files, environment variables, and CLI flags.
-- Initializing necessary services (logging, resource management, progress monitoring).
-- Orchestrating the execution flow based on user input.
-- Handling user interactions (like confirmations).
-- Displaying progress and feedback to the user.
-- Managing application lifecycle events (start, completion, errors).
+- **Type-safe argument parsing** with centralized option definitions
+- Loading and validating configuration from files, environment variables, and CLI flags
+- Initializing necessary services (logging, resource management, progress monitoring)
+- Orchestrating the execution flow based on user input
+- Handling user interactions (like confirmations)
+- Displaying progress and feedback to the user
+- Managing application lifecycle events (start, completion, errors)
 
-## 1.1. Usage Examples
+## 1.1. 🛡️ Centralized CLI Option Management
+
+The module uses a **centralized registry system** that provides compile-time safety for all CLI options:
+
+- **Single source of truth**: All CLI options are defined in `definitions/registry.ts`
+- **Type safety**: TypeScript compiler ensures consistency across all CLI-related code
+- **Automatic validation**: Unknown options are detected at runtime with warnings
+- **Mapping safety**: Commander.js keys are safely mapped to internal property names
+
+### Key Benefits
+
+✅ **Prevents CLI argument name mismatches** (like the original `-c`/`configPath` bug)  
+✅ **Compile-time error detection** when accessing undefined CLI options  
+✅ **Centralized documentation** of all available CLI arguments  
+✅ **Type-safe option mapping** between Commander.js and internal usage  
+✅ **Automatic synchronization** between CLI definitions and TypeScript interfaces  
+
+### Type-Safe CLI System Flow
+
+```mermaid
+graph TD
+    A[Registry: CLI_OPTION_DEFINITIONS] --> B[TypeScript Interfaces]
+    A --> C[Commander.js Setup]
+    A --> D[Parser Validation]
+    
+    B --> E[CommanderOptionValues]
+    B --> F[CliFlags]
+    
+    C --> G[Auto-generated CLI options]
+    D --> H[Runtime validation]
+    
+    E --> I[Type-safe option access]
+    F --> I
+    G --> I
+    H --> I
+    
+    I --> J[Application Code]
+```
+
+### Adding New CLI Arguments
+
+For detailed instructions on adding new CLI arguments safely, see our comprehensive guide:
+
+📖 **[How to Add CLI Arguments - Developer Guide](/HOW-TO-ADD-CLI-ARGUMENT.md)**
+
+This guide covers:
+- Step-by-step implementation process
+- Compile-time guarantees and safety features  
+- Common mistakes and debugging tips
+- Real-world examples and best practices
+
+## 1.2. Usage Examples
 
 Basic execution with a spec file:
 ```bash
 cedit ./specs/add-comments.yml
+```
+
+Using configuration file (type-safe `-c` option):
+```bash
+cedit ./specs/add-comments.yml -c ./custom-config.yml
 ```
 
 Dry run to see planned changes without applying them:
@@ -76,11 +132,40 @@ The `ui/cli` module is organized into the following subdirectories:
 ```
 src/ui/cli/
 ├── config/         # Configuration loading, validation, and parsing
+├── definitions/    # 🆕 Centralized CLI option definitions and registry
 ├── execution/      # Core CLI execution flow, lifecycle, and argument parsing
 ├── handlers/       # Event handlers for CLI interactions (completion, confirmation)
 ├── services/       # Utility services (progress monitoring, resource management, versioning)
-├── index.ts        # Core CLI orchestration logic (was main.ts)
+├── types.ts        # TypeScript type definitions for CLI interfaces
+├── index.ts        # Core CLI orchestration logic
 └── README.md       # This document
+```
+
+### 2.0. `definitions/` 🆕 **Centralized CLI Registry**
+
+This directory contains the **centralized type-safe CLI option management system**:
+
+- `registry.ts`: **Single source of truth** for all CLI options. Contains the `CLI_OPTION_DEFINITIONS` object that defines every CLI argument with type-safe mappings between Commander.js keys and internal property names.
+
+**Key Features:**
+- **Compile-time safety**: TypeScript ensures consistency across all CLI code
+- **Automatic validation**: Unknown options detected at runtime 
+- **Type-safe mapping**: Commander.js options safely mapped to internal usage
+- **Auto-generated help**: Commander.js help output automatically generated from registry
+
+**Registry Structure:**
+```typescript
+export const CLI_OPTION_DEFINITIONS = {
+  config: {
+    type: 'option' as const,
+    commanderFlag: '-c, --config <path>',
+    commanderKey: 'config' as const,      // What Commander.js provides
+    internalKey: 'configPath' as const,   // What we use internally  
+    description: 'Path to the configuration file',
+    required: false,
+  },
+  // ... all other CLI options
+} as const;
 ```
 
 ### 2.1. `config/`
@@ -97,10 +182,18 @@ This directory contains all logic related to CLI configuration.
 
 This directory manages the core execution logic and lifecycle of the CLI.
 
--   `parser.ts`: Handles parsing of raw command-line arguments (`process.argv`) using the `commander` library via the `parseArguments` function. It defines available CLI commands, options, and flags, and transforms them into a structured `CliFlags` object. It also performs initial validation of critical flags.
+-   **`parser.ts`** 🔄 **Updated for centralized registry**: Handles parsing of raw command-line arguments (`process.argv`) using the `commander` library via the `parseArguments` function. Now **automatically generates** CLI options from the centralized registry and provides **type-safe mapping** between Commander.js keys and internal property names. Includes runtime validation to detect unknown options not defined in the registry.
+
+    **Key Features:**
+    - **Auto-generated Commander.js setup** from `CLI_OPTION_DEFINITIONS`
+    - **Type-safe option mapping** using registry functions
+    - **Runtime validation** with warnings for unknown options
+    - **Centralized error handling** for CLI parsing issues
+
 -   `setup.ts`: Orchestrates the initial setup phase of the CLI via the `performInitialSetup` function. This includes retrieving the application version (using `getVersion` from `services/version-manager.ts`), parsing arguments (via `parseArguments` from `parser.ts`), loading the full configuration (via `loadConfiguration` from `config/loader.ts`), and initializing the logger.
 -   `flow.ts`: Contains the main orchestration logic for the CLI's operational flow after the initial setup, primarily within the `orchestrateExecution` function. It handles user confirmation, initializes services like `ProgressMonitor` and `CompletionHandler`, emits initial configuration events, and starts the main processing task by calling `startProcessing`.
 -   `lifecycle.ts`: Provides helper functions related to the CLI's lifecycle stages. It includes `startProcessing`, which invokes the core application `runFn`. This module is also responsible for ensuring that if `runFn` throws an error, a `FINISH_ABORT` event is emitted on the application bus, allowing `CompletionHandler` to manage the CLI exit.
+-   `commander-setup.ts` 🆕: **Auto-generates Commander.js configuration** from the centralized registry. This ensures that CLI option definitions are always in sync between the registry and Commander.js setup.
 -   `index.ts`: Barrel file, re-exporting key components from the `execution` module.
 
 ### 2.3. `handlers/`
@@ -123,7 +216,15 @@ This directory provides various utility services used by the CLI.
 ## 3. Key Files
 
 -   `src/index.ts`: This is the primary entry point for the CLI application (the executable script). It imports the main `runCli` function from `ui/cli/index.ts` and the core application `run` function and `getLogger` utility. It then invokes `runCli` with `process.argv` and these dependencies, handling the final promise resolution to set the process exit code or catch critical top-level errors.
--   `src/ui/cli/index.ts`: Contains the `runCli` function, which is the central orchestrator for the CLI. It initializes the execution flow by calling `orchestrateExecution` from `execution/flow.ts`. It also defines shared interfaces like `CliFlags` and `CommanderOptionValues` and includes a top-level critical error handler.
+
+-   **`src/ui/cli/types.ts`** 🆕: Contains **centralized TypeScript type definitions** for the CLI system:
+    - `CommanderOptionValues`: Interface for values provided by Commander.js
+    - `CliFlags`: Interface for CLI flags used internally throughout the application
+    - These interfaces must stay synchronized with the centralized registry for compile-time safety
+
+-   `src/ui/cli/index.ts`: Contains the `runCli` function, which is the central orchestrator for the CLI. It initializes the execution flow by calling `orchestrateExecution` from `execution/flow.ts`. It includes a top-level critical error handler and coordinates the entire CLI lifecycle.
+
+-   **`src/ui/cli/definitions/registry.ts`** 🆕: The **single source of truth** for all CLI options. This file defines every CLI argument with type-safe mappings and is used to auto-generate Commander.js setup, validate options, and ensure consistency across the entire codebase.
 
 ## 4. Core Workflow
 
@@ -137,7 +238,11 @@ The CLI follows a structured workflow:
     *   `orchestrateExecution` (in `flow.ts`) is called.
     *   `performInitialSetup` (in `setup.ts`) is invoked:
         *   Retrieves the application version (`getVersion` from `services/version-manager.ts`).
-        *   Parses command-line arguments using `commander` (`parseArguments` from `parser.ts`) into `CliFlags`. This includes validation of required arguments like the spec file.
+        *   **🔄 Type-safe argument parsing** (`parseArguments` from `parser.ts`):
+            *   Auto-generates Commander.js options from the centralized registry
+            *   Validates unknown options at runtime with warnings
+            *   Maps Commander.js keys to internal property names using type-safe functions
+            *   Returns structured `CliFlags` object with compile-time guarantees
         *   Loads configuration (`loadConfiguration` from `config/loader.ts`):
             *   The configuration is built by layering sources with the following precedence (highest to lowest):
                 1.  CLI flags (e.g., `--log-level`).

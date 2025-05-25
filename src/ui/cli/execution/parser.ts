@@ -1,11 +1,12 @@
 /**
- * CLI argument parsing utilities
+ * CLI argument parsing utilities with type-safe option mapping.
  */
 
 import type { Command } from 'commander';
 import type { CliFlags, CommanderOptionValues } from '../types.js';
 import chalk from 'chalk';
 import { setupCommander } from './commander-setup.js';
+import { isValidCommanderKey } from '../definitions/registry.js';
 
 /**
  * Helper to normalize string CLI options.
@@ -70,8 +71,10 @@ export async function parseArguments( // Renamed function
   const opts: CommanderOptionValues = program.opts();
   const args = program.args;
 
+  // Type-safe option mapping using centralized registry
   const flags: CliFlags = {
     spec: getStringOpt(args[0]),
+    configPath: getStringOpt(opts.config), // 'config' -> 'configPath' mapping
     dryRun: getBooleanOpt(opts.dryRun),
     var: opts.var || [],
     logLevel: opts.logLevel,
@@ -83,6 +86,13 @@ export async function parseArguments( // Renamed function
     sleepMs: getNumberOpt(opts.sleepMs),
     yes: getRequiredBooleanOpt(opts.yes),
   };
+
+  // Validate that we're only using keys from our registry
+  for (const key of Object.keys(opts)) {
+    if (!isValidCommanderKey(key)) {
+      console.warn(chalk.yellow(`Warning: Unknown CLI option '${key}' not in registry`));
+    }
+  }
 
   // Perform critical flag validation immediately after parsing and constructing flags
   validateCriticalFlags(flags, program);

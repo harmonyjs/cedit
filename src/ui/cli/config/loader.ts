@@ -91,10 +91,23 @@ async function loadIndividualConfigFile(filePath: string): Promise<PartialCliCon
 }
 
 /**
- * Loads the first found config file from the standard locations.
+ * Loads config file from the specified path or from standard locations.
+ * If customPath is provided, only that file is tried.
  * Returns the parsed config object or an empty object if not found.
  */
-export async function loadConfigFile(): Promise<PartialCliConfigFromFile> {
+export async function loadConfigFile(customPath?: string): Promise<PartialCliConfigFromFile> {
+  if (customPath !== undefined && customPath !== '') {
+    // If custom path is provided, resolve it and try only that file
+    const resolvedPath = path.resolve(customPath);
+    const loadedCfg = await loadIndividualConfigFile(resolvedPath);
+    if (loadedCfg) {
+      return loadedCfg;
+    }
+    // If custom path was specified but file not found or invalid, throw error
+    throw new Error(`Configuration file not found or invalid: ${resolvedPath}`);
+  }
+
+  // Use standard locations if no custom path provided
   const homeDir = os.homedir();
   const candidateFiles = [
     path.resolve('.cedit.yml'),
@@ -114,9 +127,13 @@ export async function loadConfigFile(): Promise<PartialCliConfigFromFile> {
  * Loads and merges configuration from various sources
  */
 export async function loadConfiguration(flags: CliFlags): Promise<CliConfig> {
-  const fileCfg = await loadConfigFile();
+  const fileCfg = await loadConfigFile(flags.configPath);
   if (Object.keys(fileCfg).length === 0) {
-    console.log(chalk.dim('No config file found, using defaults and CLI flags.'));
+    if (flags.configPath !== undefined && flags.configPath !== '') {
+      console.log(chalk.dim(`No config loaded from ${flags.configPath}, using defaults and CLI flags.`));
+    } else {
+      console.log(chalk.dim('No config file found, using defaults and CLI flags.'));
+    }
   }
 
   // Create a shallow copy of DEFAULT_CONFIG to prevent modifying the original
